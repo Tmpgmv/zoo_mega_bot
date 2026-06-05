@@ -18,9 +18,12 @@ from django.contrib import admin
 from django.urls import path
 
 from telegram.views import TelegramWebhookView, HelpView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("telegram-webhook/", TelegramWebhookView.as_view(), name="telegram_webhook"),
-    path("help/", HelpView.as_view(), name="help"),
-]
+                  path('admin/', admin.site.urls),
+                  path("telegram-webhook/", TelegramWebhookView.as_view(), name="telegram_webhook"),
+                  path("help/", HelpView.as_view(), name="help"),
+              ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
