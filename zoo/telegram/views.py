@@ -309,6 +309,7 @@ class TelegramWebhookView(View):
                 keyboard
 
             )
+
         except Exception as e:
             print(f"Error in handle_animals: {e}")
             import traceback
@@ -532,18 +533,37 @@ class TelegramWebhookView(View):
 
             text = f"""<b>🦊 {animal.name}</b>
 
-📖 <b>Описание:</b>
-{animal.description}
+    📖 <b>Описание:</b>
+    {animal.description}
 
-💫 <b>Характеристики:</b>
-• Символизм: {self._get_animal_symbolism(animal.name)}
-• Сильные стороны: {self._get_animal_strengths(animal.name)}
-• Когда появляется: {self._get_animal_when_appears(animal.name)}
+    💫 <b>Характеристики:</b>
+    • Символизм: {self._get_animal_symbolism(animal.name)}
+    • Сильные стороны: {self._get_animal_strengths(animal.name)}
+    • Когда появляется: {self._get_animal_when_appears(animal.name)}"""
 
-Пройти тестирование заново? Нажмите /start
+            # Создаем клавиатуру с кнопками
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🔄 Пройти тест заново", "callback_data": "restart_quiz"}],
+                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                ]
+            }
 
-Все животные /animals
-"""
+            if animal.photo and animal.photo.name:
+                photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
+                if os.path.exists(photo_path):
+                    self.bot.send_photo(chat_id, photo_path, text, keyboard)
+                else:
+                    self.bot.send_message(chat_id, text, keyboard)
+            else:
+                self.bot.send_message(chat_id, text, keyboard)
+
+        except Animal.DoesNotExist:
+            self.bot.send_message(chat_id, "Животное не найдено")
+        except Exception as e:
+            print(f"Error in show_animal_detail: {e}")
+            import traceback
+            traceback.print_exc()
 
             if animal.photo and animal.photo.name:
                 photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
