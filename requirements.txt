@@ -3,3 +3,4 @@ pillow==12.2.0
 requests==2.34.2
 reportlab==4.5.1
 CairoSVG==2.9.0
+django-solo==2.5.1
