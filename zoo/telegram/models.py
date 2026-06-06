@@ -154,3 +154,27 @@ class GuardianProgram(SingletonModel):
     class Meta:
         verbose_name = "Программа опеки"
         verbose_name_plural = "Программа опеки"
+
+
+class Feedback(models.Model):
+    RATING_CHOICES = [
+        (5, '⭐ Отлично'),
+        (4, '👍 Хорошо'),
+        (3, '😐 Нормально'),
+        (2, '😕 Плохо'),
+        (1, '👎 Ужасно'),
+    ]
+
+    user_id = models.BigIntegerField(verbose_name="ID пользователя")
+    username = models.CharField(max_length=255, blank=True, verbose_name="Имя пользователя")
+    rating = models.IntegerField(choices=RATING_CHOICES, verbose_name="Оценка")
+    comment = models.TextField(blank=True, verbose_name="Комментарий")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+
+    def __str__(self):
+        return f"Отзыв от {self.username or self.user_id} - {self.get_rating_display()}"
+
+    class Meta:
+        verbose_name = "Отзыв"
+        verbose_name_plural = "Отзывы"
+        ordering = ['-created_at']

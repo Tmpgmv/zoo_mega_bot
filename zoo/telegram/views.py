@@ -9,7 +9,8 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 
-from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo, GuardianProgram
+from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo, GuardianProgram, \
+    Feedback
 
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
@@ -207,6 +208,11 @@ class QuizSession:
 class TelegramWebhookView(View):
     """Основной webhook для обработки сообщений"""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.waiting_for_feedback_comment = {}
+        self.temp_rating = {}
+
     bot = TelegramBot()
 
     def post(self, request):
@@ -246,8 +252,9 @@ class TelegramWebhookView(View):
             "inline_keyboard": [
                 [{"text": "🦘 Пройти викторину заново", "callback_data": "restart_quiz"}],
                 [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
-                [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
                 [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
             ]
         }
@@ -267,7 +274,11 @@ class TelegramWebhookView(View):
                 self.handle_animals(chat_id)
             elif text == '/guardian':
                 self.show_guardian_program(chat_id)
-
+            elif text == '/feedback':
+                self.show_feedback_menu(chat_id)
+            elif text == '/cancel':
+                self.bot.send_message(chat_id, "Действие отменено. Возвращаюсь в главное меню.")
+                self.handle_start(chat_id, username)
             else:
                 self.bot.send_message(
                     chat_id,
@@ -292,8 +303,9 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🐻 Узнайте, какое у вас тотемное животное?", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 ]
             }
 
@@ -333,8 +345,9 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": animal_buttons + [
                     [{"text": "🐨 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 ]
             }
 
@@ -355,6 +368,7 @@ class TelegramWebhookView(View):
             chat_id = callback['message']['chat']['id']
             callback_id = callback['id']
             callback_data = callback.get('data', '')
+            username = callback['message']['chat'].get('username', '')
 
             print(f"Callback received: {callback_data}")
 
@@ -364,7 +378,7 @@ class TelegramWebhookView(View):
             if callback_data == "start_quiz":
                 session = QuizSession(chat_id)
                 self.start_quiz(session, chat_id)
-            elif callback_data == "restart_quiz":  # <-- ДОБАВЛЕНО
+            elif callback_data == "restart_quiz":
                 session = QuizSession(chat_id)
                 session.reset()
                 self.start_quiz(session, chat_id)
@@ -374,6 +388,17 @@ class TelegramWebhookView(View):
                 self.show_about_zoo(chat_id)
             elif callback_data == "guardian_program":
                 self.show_guardian_program(chat_id)
+            elif callback_data == "feedback_menu":
+                self.show_feedback_menu(chat_id)
+            elif callback_data.startswith("feedback_"):
+                rating = callback_data.split('_')[1]
+                if rating in ['1', '2', '3', '4', '5']:
+                    self.process_feedback_rating(chat_id, int(rating), username)
+                elif rating == "write_comment":
+                    self.ask_for_feedback_comment(chat_id)
+                elif rating == "skip":
+                    rating_value = self.temp_rating.get(chat_id, 5)
+                    self.save_feedback(chat_id, username, rating_value, "")
             elif callback_data == "show_zoo_description":
                 self.show_zoo_description(chat_id)
             elif callback_data == "show_zoo_photos":
@@ -387,7 +412,7 @@ class TelegramWebhookView(View):
             elif callback_data == "main_menu":
                 session = QuizSession(chat_id)
                 session.reset()
-                self.handle_start(chat_id, session.session.username)
+                self.handle_start(chat_id, username)
             else:
                 print(f"Unknown callback: {callback_data}")
 
@@ -604,8 +629,9 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти викторину заново", "callback_data": "restart_quiz"}],  # <-- ДОБАВЛЕНО
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -673,6 +699,7 @@ class TelegramWebhookView(View):
                 [{"text": "📖 Описание и контакты", "callback_data": "show_zoo_description"}],
                 [{"text": "📸 Фото зоопарка", "callback_data": "show_zoo_photos"}],
                 [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
 
             ]
@@ -725,6 +752,7 @@ class TelegramWebhookView(View):
                     [{"text": "🌿 Узнать тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -771,6 +799,7 @@ class TelegramWebhookView(View):
                     [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -785,6 +814,102 @@ class TelegramWebhookView(View):
                 chat_id,
                 "Извините, произошла ошибка при загрузке фото."
             )
+
+    def show_feedback_menu(self, chat_id):
+        """Показать меню обратной связи"""
+        text = """💬 <b>Обратная связь</b>
+
+    Так! Не ругаться. Что ты хочешь нам сказать хорошего.
+    Как тебе зоопарк?"""
+
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "⭐ 5 - Отлично", "callback_data": "feedback_5"}],
+                [{"text": "👍 4 - Хорошо", "callback_data": "feedback_4"}],
+                [{"text": "😐 3 - Нормально", "callback_data": "feedback_3"}],
+                [{"text": "😕 2 - Плохо", "callback_data": "feedback_2"}],
+                [{"text": "👎 1 - Ужасно", "callback_data": "feedback_1"}],
+                [{"text": "🔙 Назад", "callback_data": "main_menu"}],
+            ]
+        }
+
+        self.bot.send_message(chat_id, text, keyboard)
+
+    def process_feedback_rating(self, chat_id, rating, username):
+        """Обработка оценки отзыва"""
+        try:
+            # Сохраняем временную оценку
+            self.temp_rating[chat_id] = rating
+
+            text = f"""💬 <b>Спасибо за оценку {rating}⭐!</b>
+
+    Расскажи подробнее, что тебе понравилось или не понравилось? Можешь оставить комментарий или просто нажать "Пропустить".
+
+    Твое мнение поможет нам стать лучше!"""
+
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "✏️ Написать комментарий", "callback_data": "feedback_write_comment"}],
+                    [{"text": "⏭️ Пропустить", "callback_data": "feedback_skip"}],
+                    [{"text": "🔙 Назад", "callback_data": "feedback_menu"}],
+                ]
+            }
+
+            self.bot.send_message(chat_id, text, keyboard)
+
+        except Exception as e:
+            print(f"Error in process_feedback_rating: {e}")
+
+    def ask_for_feedback_comment(self, chat_id):
+        """Запросить комментарий к отзыву"""
+        text = """💬 <b>Напишите ваш комментарий</b>
+
+    Пожалуйста, напишите сообщение с вашими пожеланиями или замечаниями.
+
+    Вы можете написать что угодно, а я сохраню ваш отзыв.
+
+    Чтобы отменить, нажмите /cancel"""
+
+        self.bot.send_message(chat_id, text)
+        # Устанавливаем состояние ожидания комментария
+        self.waiting_for_feedback_comment[chat_id] = True
+
+    def save_feedback(self, chat_id, username, rating, comment=""):
+        """Сохранить отзыв в базу данных"""
+        try:
+            feedback = Feedback.objects.create(
+                user_id=chat_id,
+                username=username or f"user_{chat_id}",
+                rating=rating,
+                comment=comment
+            )
+
+            # Отправляем подтверждение
+            text = f"""✅ <b>Спасибо за ваш отзыв!</b>
+
+    Ваша оценка: {rating}⭐
+    Комментарий: {comment if comment else "Не оставлен"}
+
+    Спасибо за отзыв. Мы учтем и будем стараться стать лучше!
+
+    Хочешь оставить еще один отзыв? Нажми /feedback"""
+
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🏠 В главное меню", "callback_data": "main_menu"}],
+                    [{"text": "💬 Оставить еще отзыв", "callback_data": "feedback_menu"}],
+                ]
+            }
+
+            self.bot.send_message(chat_id, text, keyboard)
+
+            # Убираем состояние ожидания
+            if hasattr(self, 'waiting_for_feedback_comment'):
+                self.waiting_for_feedback_comment[chat_id] = False
+
+        except Exception as e:
+            print(f"Error saving feedback: {e}")
+            self.bot.send_message(chat_id, "Извините, произошла ошибка при сохранении отзыва. Попробуйте позже.")
 
     def show_guardian_program(self, chat_id):
         """Показать информацию о программе опеки"""
@@ -803,6 +928,8 @@ class TelegramWebhookView(View):
                     [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
