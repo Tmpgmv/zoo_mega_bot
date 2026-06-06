@@ -13,36 +13,42 @@ class Command(BaseCommand):
 
         # Создаем животных
         wolf = Animal.objects.create(
+            emoji = "🐺",
             name="Волк",
             photo="animals/wolf.jpg",
             description="Волк - символ свободы, независимости и верности стае."
         )
 
         eagle = Animal.objects.create(
+            emoji="🦅",
             name="Орел",
             photo="animals/eagle.jpg",
             description="Орел - символ власти, свободы и духовного видения."
         )
 
         lion = Animal.objects.create(
+            emoji="🦁",
             name="Лев",
             photo="animals/lion.jpg",
             description="Лев - символ силы, мужества и лидерства."
         )
 
         owl = Animal.objects.create(
+            emoji="🦉",
             name="Филин",
             photo="animals/owl.jpg",
             description="Филин - символ мудрости, знаний и интуиции."
         )
 
         bear = Animal.objects.create(
+            emoji="🐻",
             name="Медведь",
             photo="animals/bear.jpg",
             description="Медведь - символ силы, защиты и внутренней гармонии."
         )
 
         dolphin = Animal.objects.create(
+            emoji="🐬",
             name="Дельфин",
             photo="animals/dolphin.jpg",
             description="Дельфин - символ дружбы, радости и свободы."

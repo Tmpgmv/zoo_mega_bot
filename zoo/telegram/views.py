@@ -236,6 +236,24 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             return JsonResponse({"status": "error", "error": str(e)}, status=200)
 
+    def show_restart_prompt(self, chat_id):
+        """Показать предложение перезапустить викторину"""
+        text = """🎯 <b>Викторина "Тотемное животное" завершена!</b>
+    
+    🌿 <b>Что теперь?</b>"""
+
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🦘 Пройти викторину заново", "callback_data": "restart_quiz"}],
+                [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
+            ]
+        }
+
+        self.bot.send_message(chat_id, text, keyboard)
+
     def handle_message(self, message):
         """Обработка текстовых сообщений"""
         try:
@@ -272,7 +290,7 @@ class TelegramWebhookView(View):
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🌿 Узнайте, какое у вас тотемное животное?", "callback_data": "start_quiz"}],
+                    [{"text": "🐻 Узнайте, какое у вас тотемное животное?", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
@@ -302,7 +320,7 @@ class TelegramWebhookView(View):
             animal_buttons = []
             row = []
             for i, animal in enumerate(animals, 1):
-                row.append({"text": f"🐾 {animal.name}", "callback_data": f"animal_{animal.id}"})
+                row.append({"text": f"{animal.emoji} {animal.name}", "callback_data": f"animal_{animal.id}"})
                 if i % 2 == 0:  # Каждые 2 кнопки в ряд
                     animal_buttons.append(row)
                     row = []
@@ -314,7 +332,7 @@ class TelegramWebhookView(View):
             # Добавляем кнопку для прохождения теста
             keyboard = {
                 "inline_keyboard": animal_buttons + [
-                    [{"text": "🌿 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
+                    [{"text": "🐨 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 ]
@@ -322,7 +340,7 @@ class TelegramWebhookView(View):
 
             self.bot.send_message(
                 chat_id,
-                "🐘 <b>Все тотемные животные</b>\n\nВыбери животное чтобы узнать подробнее о нем, или пройди тест чтобы узнать свое тотемное животное:",
+                "🐘 <b>Все тотемные животные</b>\n\nВыбери животное, чтобы узнать подробнее о нем. Или пройди викторину, чтобы узнать свое тотемное животное:",
                 keyboard
             )
 
@@ -346,11 +364,15 @@ class TelegramWebhookView(View):
             if callback_data == "start_quiz":
                 session = QuizSession(chat_id)
                 self.start_quiz(session, chat_id)
+            elif callback_data == "restart_quiz":  # <-- ДОБАВЛЕНО
+                session = QuizSession(chat_id)
+                session.reset()
+                self.start_quiz(session, chat_id)
             elif callback_data == "show_animals":
                 self.handle_animals(chat_id)
             elif callback_data == "about_zoo":
                 self.show_about_zoo(chat_id)
-            elif callback_data == "guardian_program":  # <-- ДОБАВЬТЕ ЭТУ СТРОКУ
+            elif callback_data == "guardian_program":
                 self.show_guardian_program(chat_id)
             elif callback_data == "show_zoo_description":
                 self.show_zoo_description(chat_id)
@@ -362,10 +384,6 @@ class TelegramWebhookView(View):
             elif callback_data.startswith("ans_"):
                 session = QuizSession(chat_id)
                 self.process_answer(session, chat_id, callback_data)
-            elif callback_data == "restart_quiz":
-                session = QuizSession(chat_id)
-                session.reset()
-                self.start_quiz(session, chat_id)
             elif callback_data == "main_menu":
                 session = QuizSession(chat_id)
                 session.reset()
@@ -447,6 +465,12 @@ class TelegramWebhookView(View):
                 "Извините, произошла ошибка при загрузке вопроса. Попробуйте /start"
             )
 
+    def restart_quiz(self, chat_id):
+        """Перезапуск викторины"""
+        session = QuizSession(chat_id)
+        session.reset()
+        self.start_quiz(session, chat_id)
+
     def send_result(self, session, chat_id):
         """Отправка результата теста с фото животного и топ-3 тотемов"""
         try:
@@ -492,53 +516,47 @@ class TelegramWebhookView(View):
             # Формируем текст результата
             result_text = f"""🎯 <b>Да ты - {primary_animal.name}!</b>
 
-📊 <b>Степень соответствия:</b> {percentage}%
-✨ <b>Набрано очков:</b> {primary_points} из {max_points}
-{strength_message}
+    📊 <b>Степень соответствия:</b> {percentage}%
+    ✨ <b>Набрано очков:</b> {primary_points} из {max_points}
+    {strength_message}
 
-📖 <b>Описание:</b>
-{primary_animal.description}
+    📖 <b>Описание:</b>
+    {primary_animal.description}
 
-━━━━━━━━━━━━━━━━━━━━
-<b>🏆 Ваши топ-3 тотемных животных:</b>
+    ━━━━━━━━━━━━━━━━━━━━
+    <b>🏆 Твои топ-3 тотемных животных:</b>
 
-1️⃣ <b>{primary_animal_name if primary_animal_name else '—'}</b> — {primary_points} очков
-2️⃣ <b>{secondary_animal_name if secondary_animal_name else '—'}</b> — {secondary_points} очков
-3️⃣ <b>{tertiary_animal_name if tertiary_animal_name else '—'}</b> — {tertiary_points} очков
-━━━━━━━━━━━━━━━━━━━━
+    1️⃣ <b>{primary_animal_name if primary_animal_name else '—'}</b> — {primary_points} очков
+    2️⃣ <b>{secondary_animal_name if secondary_animal_name else '—'}</b> — {secondary_points} очков
+    3️⃣ <b>{tertiary_animal_name if tertiary_animal_name else '—'}</b> — {tertiary_points} очков
+    ━━━━━━━━━━━━━━━━━━━━
 
-💡 <b>Совет:</b> 
-{self._get_animal_advice(primary_animal.name)}
+    💡 <b>Совет:</b> 
+    {self._get_animal_advice(primary_animal.name)}
+    ━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━
+    💰 <b>Почему бы тебе не взять свой тотем в опеку?</b> 
+    <b>Нажми /guardian</b>
 
-💡 <b>Почему бы тебе не взять его в опеку?:</b> 
-Нажмите /guardian"""
 
-            # Создаем клавиатуру для перезапуска
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": "🔄 Заново определить тотемное животное", "callback_data": "restart_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
-                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
-                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
-                ]
-            }
+"""
 
             # Отправляем результат с фото животного
             if primary_animal.photo and primary_animal.photo.name:
                 photo_path = os.path.join(settings.MEDIA_ROOT, primary_animal.photo.name)
                 print(f"Sending animal photo from: {photo_path}")
                 if os.path.exists(photo_path):
-                    self.bot.send_photo(chat_id, photo_path, result_text, keyboard)
+                    self.bot.send_photo(chat_id, photo_path, result_text)
                 else:
                     print(f"Animal photo not found: {photo_path}")
-                    self.bot.send_message(chat_id, result_text, keyboard)
+                    self.bot.send_message(chat_id, result_text)
             else:
-                self.bot.send_message(chat_id, result_text, keyboard)
+                self.bot.send_message(chat_id, result_text)
 
             session.complete()
+
+            # После отправки результата, показываем предложение перезапустить викторину
+            self.show_restart_prompt(chat_id)
 
         except Exception as e:
             print(f"Error in send_result: {e}")
@@ -568,24 +586,23 @@ class TelegramWebhookView(View):
 
             text = f"""<b>🦊 {animal.name}</b>
 
-📖 <b>Описание:</b>
-{animal.description}
+    📖 <b>Описание:</b>
+    {animal.description}
 
-💫 <b>Характеристики:</b>
-• Символизм: {self._get_animal_symbolism(animal.name)}
-• Сильные стороны: {self._get_animal_strengths(animal.name)}
-• Когда появляется: {self._get_animal_when_appears(animal.name)}
+    💫 <b>Характеристики:</b>
+    • Символизм: {self._get_animal_symbolism(animal.name)}
+    • Сильные стороны: {self._get_animal_strengths(animal.name)}
+    • Когда появляется: {self._get_animal_when_appears(animal.name)}
 
-💡 <b>Почему бы тебе не взять его в опеку?:</b> 
-Нажмите /guardian
+    💡 <b>Почему бы тебе не взять его в опеку?:</b> 
+    Нажмите /guardian
 
-"""
-
+    """
 
             # Создаем клавиатуру с кнопками
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🔄 Узнать тотем заново", "callback_data": "restart_quiz"}],
+                    [{"text": "🔄 Пройти викторину заново", "callback_data": "restart_quiz"}],  # <-- ДОБАВЛЕНО
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],

@@ -33,6 +33,7 @@ class Animal(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название животного")
     photo = models.ImageField(upload_to='animals/', verbose_name="Фото животного")
     description = models.TextField(blank=True, verbose_name="Описание")
+    emoji = models.CharField(max_length=1000, blank=True, default="", verbose_name="Емодзи")
 
     class Meta:
         verbose_name = "Животное"
