@@ -19,11 +19,8 @@ class HelpView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["BOT_TOKEN"] = TELEGRAM_ACCESS_TOKEN
-        context["HTTPS_URL"] = TelegramSettings.objects.first().webhook_url
+        context["HTTPS_URL"] = TelegramSettings.objects.first().webhook_url if TelegramSettings.objects.first() else ""
         return context
-
-
-
 
 
 class TelegramBot:
@@ -132,7 +129,6 @@ class QuizSession:
             'all_scores': animal_scores,
             'total_questions': len(self.get_all_questions())  # Добавляем total_questions
         }
-
 
     def reset(self):
         """Сброс сессии"""
@@ -274,6 +270,7 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -314,6 +311,7 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": animal_buttons + [
                     [{"text": "🌿 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -346,6 +344,10 @@ class TelegramWebhookView(View):
                 self.start_quiz(session, chat_id)
             elif callback_data == "show_animals":
                 self.handle_animals(chat_id)
+            elif callback_data == "about_zoo":
+                self.show_about_zoo(chat_id)
+            elif callback_data == "zoo_photos":
+                self.show_zoo_photos(chat_id)
             elif callback_data == "main_menu":
                 # Возвращаемся в главное меню
                 session = QuizSession(chat_id)
@@ -507,6 +509,7 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти заново", "callback_data": "restart_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -566,6 +569,7 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти тест заново", "callback_data": "restart_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -585,20 +589,6 @@ class TelegramWebhookView(View):
             print(f"Error in show_animal_detail: {e}")
             import traceback
             traceback.print_exc()
-
-            if animal.photo and animal.photo.name:
-                photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
-                if os.path.exists(photo_path):
-                    self.bot.send_photo(chat_id, photo_path, text)
-                else:
-                    self.bot.send_message(chat_id, text)
-            else:
-                self.bot.send_message(chat_id, text)
-
-        except Animal.DoesNotExist:
-            self.bot.send_message(chat_id, "Животное не найдено")
-        except Exception as e:
-            print(f"Error in show_animal_detail: {e}")
 
     def _get_animal_symbolism(self, animal_name):
         """Получить символизм животного"""
@@ -636,6 +626,123 @@ class TelegramWebhookView(View):
         }
         return appearances.get(animal_name, "В моменты важных жизненных выборов")
 
+    def show_about_zoo(self, chat_id):
+        """Показать информацию о зоопарке"""
+        try:
+            from telegram.models import AboutZoo, Photo
+
+            # Получаем информацию о зоопарке (предполагаем, что она одна)
+            about = AboutZoo.objects.first()
+
+            if not about:
+                self.bot.send_message(
+                    chat_id,
+                    "🏛️ <b>Информация о зоопарке временно недоступна.</b>\n\nПожалуйста, зайдите позже."
+                )
+                return
+
+            # Форматируем номер телефона
+            formatted_phone = about.get_phone()
+
+            # Получаем фото зоопарка (первые 3 фото)
+            photos = Photo.objects.all()[:3]
+
+            # Формируем текст
+            about_text = f"""🏛️ <b>О нашем зоопарке</b>
+
+    📖 <b>Описание:</b>
+    {about.description}
+
+    📞 <b>Контакты:</b>
+    • Email: {about.email}
+    • Телефон: {formatted_phone}
+
+    🌍 <b>Часы работы:</b>
+    Ежедневно: 9:00 - 21:00
+
+    🎫 <b>Стоимость билетов:</b>
+    Взрослый: 500 руб.
+    Детский: 300 руб.
+    Льготный: 250 руб.
+
+    ✨ <b>Наши преимущества:</b>
+    • Более 100 видов животных
+    • Ежедневные шоу и кормления
+    • Контактный зоопарк
+    • Экскурсии для групп
+
+    💫 Хотите узнать свое тотемное животное? Нажмите /start"""
+
+            # Создаем клавиатуру
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "📸 Смотреть фото зоопарка", "callback_data": "zoo_photos"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
+                ]
+            }
+
+            # Отправляем информацию
+            self.bot.send_message(chat_id, about_text, keyboard)
+
+            # Отправляем фото зоопарка, если они есть
+            for photo in photos:
+                if photo.photo and photo.photo.name:
+                    photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo.name)
+                    if os.path.exists(photo_path):
+                        caption = photo.caption if photo.caption else "Наш зоопарк"
+                        self.bot.send_photo(chat_id, photo_path, caption)
+
+        except Exception as e:
+            print(f"Error in show_about_zoo: {e}")
+            import traceback
+            traceback.print_exc()
+            self.bot.send_message(
+                chat_id,
+                "Извините, произошла ошибка при загрузке информации о зоопарке."
+            )
+
+    def show_zoo_photos(self, chat_id):
+        """Показать все фото зоопарка"""
+        try:
+            from telegram.models import Photo
+
+            photos = Photo.objects.all()
+
+            if not photos:
+                self.bot.send_message(
+                    chat_id,
+                    "📸 Фото зоопарка временно недоступны."
+                )
+                return
+
+            # Отправляем все фото
+            for photo in photos:
+                if photo.photo and photo.photo.name:
+                    photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo.name)
+                    if os.path.exists(photo_path):
+                        caption = photo.caption if photo.caption else "Наш зоопарк"
+                        self.bot.send_photo(chat_id, photo_path, caption)
+
+            # Кнопка для возврата
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🏛️ Назад к информации о зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
+                ]
+            }
+
+            self.bot.send_message(
+                chat_id,
+                "📸 <b>Это все фото нашего зоопарка</b>\n\nПриходите к нам в гости!",
+                keyboard
+            )
+
+        except Exception as e:
+            print(f"Error in show_zoo_photos: {e}")
+            import traceback
+            traceback.print_exc()
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WebhookInfoView(View):
@@ -649,16 +756,6 @@ class WebhookInfoView(View):
         return JsonResponse(response.json())
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class WebhookInfoView(View):
-    """View для получения информации о webhook"""
-
-    def get(self, request):
-        from zoo.secret import TELEGRAM_ACCESS_TOKEN
-
-        url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/getWebhookInfo"
-        response = requests.get(url)
-        return JsonResponse(response.json())
 
 
 
