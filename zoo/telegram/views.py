@@ -273,7 +273,8 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}]
+                    [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
 
@@ -296,18 +297,31 @@ class TelegramWebhookView(View):
                 )
                 return
 
+            # Разбиваем животных на колонки (по 2 в ряд)
+            animal_buttons = []
+            row = []
+            for i, animal in enumerate(animals, 1):
+                row.append({"text": f"🐾 {animal.name}", "callback_data": f"animal_{animal.id}"})
+                if i % 2 == 0:  # Каждые 2 кнопки в ряд
+                    animal_buttons.append(row)
+                    row = []
+
+            # Добавляем оставшиеся кнопки
+            if row:
+                animal_buttons.append(row)
+
+            # Добавляем кнопку для прохождения теста
             keyboard = {
-                "inline_keyboard": [
-                    [{"text": f"🐾 {animal.name}", "callback_data": f"animal_{animal.id}"}]
-                    for animal in animals
+                "inline_keyboard": animal_buttons + [
+                    [{"text": "🌿 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
 
             self.bot.send_message(
                 chat_id,
-                "🐘 <b>Все тотемные животные</b>\n\nВыберите животное чтобы узнать подробнее:",
+                "🐘 <b>Все тотемные животные</b>\n\nВыберите животное чтобы узнать подробнее о нем, или пройдите тест чтобы узнать ваше тотемное животное:",
                 keyboard
-
             )
 
         except Exception as e:
@@ -332,6 +346,11 @@ class TelegramWebhookView(View):
                 self.start_quiz(session, chat_id)
             elif callback_data == "show_animals":
                 self.handle_animals(chat_id)
+            elif callback_data == "main_menu":
+                # Возвращаемся в главное меню
+                session = QuizSession(chat_id)
+                session.reset()
+                self.handle_start(chat_id, session.session.username)
             elif callback_data.startswith("animal_"):
                 animal_id = int(callback_data.split('_')[1])
                 self.show_animal_detail(chat_id, animal_id)
@@ -487,7 +506,8 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти заново", "callback_data": "restart_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}]
+                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
 
@@ -546,6 +566,7 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти тест заново", "callback_data": "restart_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
 
