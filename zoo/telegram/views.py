@@ -35,6 +35,7 @@
 #
 #
 #
+from django.conf import settings
 from django.views.generic import TemplateView
 
 
@@ -368,6 +369,16 @@ from django.utils.decorators import method_decorator
 from telegram.models import Question, Answer, UserSession, Animal, TelegramSettings
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
+import json
+import requests
+import os
+from django.http import JsonResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from telegram.models import Question, Answer, UserSession, Animal
+from zoo.secret import TELEGRAM_ACCESS_TOKEN
+
 
 class TelegramBot:
     """Класс-утилита для работы с Telegram API"""
@@ -391,8 +402,15 @@ class TelegramBot:
 
     @staticmethod
     def send_photo(chat_id, photo_path, caption=None, reply_markup=None):
+        """Отправка фото с подписью и клавиатурой"""
         url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/sendPhoto"
         try:
+            # Проверяем существование файла
+            if not os.path.exists(photo_path):
+                print(f"Photo not found: {photo_path}")
+                # Если фото нет, отправляем просто текст
+                return TelegramBot.send_message(chat_id, caption, reply_markup)
+
             with open(photo_path, 'rb') as photo:
                 files = {'photo': photo}
                 data = {'chat_id': chat_id}
@@ -403,13 +421,10 @@ class TelegramBot:
                     data['reply_markup'] = json.dumps(reply_markup)
                 response = requests.post(url, files=files, data=data, timeout=10)
                 return response.json()
-        except FileNotFoundError:
-            print(f"Photo not found: {photo_path}")
-            # Если фото нет, отправляем просто текст
-            return TelegramBot.send_message(chat_id, caption, reply_markup)
         except Exception as e:
             print(f"Error sending photo: {e}")
-            return None
+            # В случае ошибки отправляем текст
+            return TelegramBot.send_message(chat_id, caption, reply_markup)
 
     @staticmethod
     def answer_callback(callback_id):
@@ -535,7 +550,6 @@ class TelegramWebhookView(View):
             print(f"Error in webhook: {e}")
             import traceback
             traceback.print_exc()
-            # Всегда возвращаем 200, чтобы Telegram не повторял запрос
             return JsonResponse({"status": "error", "error": str(e)}, status=200)
 
     def handle_message(self, message):
@@ -683,12 +697,15 @@ class TelegramWebhookView(View):
 
             caption = f"❓ <b>Вопрос {question_number}/{total_questions}</b>\n\n{question.text}\n\nВыберите вариант:"
 
-            # Отправляем вопрос (с картинкой или без)
-
+            # Отправляем вопрос
             self.bot.send_message(chat_id, caption, keyboard)
 
         except Exception as e:
             print(f"Error in send_current_question: {e}")
+            import traceback
+            traceback.print_exc()
+            # В случае ошибки отправляем хотя бы текст
+            self.bot.send_message(chat_id, "Извините, произошла ошибка при загрузке вопроса. Попробуйте /start")
 
     def send_result(self, session, chat_id):
         """Отправка результата теста с фото животного"""
@@ -709,7 +726,7 @@ class TelegramWebhookView(View):
                 ]
             }
 
-            result_text = f"""🎯 <b>Ваше тотемное животное - {animal.name}!</b>
+            result_text = f"""🎯 <b>Да ты {animal.name}!</b>
 
 ✨ Набрано очков: {result['points']}
 📊 Пройдено вопросов: {result['total_questions']}
@@ -720,11 +737,14 @@ class TelegramWebhookView(View):
 🌿 Это животное отражает вашу сущность и внутреннюю силу."""
 
             # Отправляем результат с фото животного
-            if animal.photo and animal.photo.path:
-                import os
-                if os.path.exists(animal.photo.path):
-                    self.bot.send_photo(chat_id, animal.photo.path, result_text, keyboard)
+            if animal.photo and animal.photo.name:
+                # Получаем полный путь к фото животного
+                photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
+                print(f"Sending animal photo from: {photo_path}")  # Отладочный вывод
+                if os.path.exists(photo_path):
+                    self.bot.send_photo(chat_id, photo_path, result_text, keyboard)
                 else:
+                    print(f"Animal photo not found: {photo_path}")
                     self.bot.send_message(chat_id, result_text, keyboard)
             else:
                 self.bot.send_message(chat_id, result_text, keyboard)
@@ -733,6 +753,8 @@ class TelegramWebhookView(View):
 
         except Exception as e:
             print(f"Error in send_result: {e}")
+            import traceback
+            traceback.print_exc()
 
     def show_animal_detail(self, chat_id, animal_id):
         """Показать детальную информацию о животном"""
@@ -745,10 +767,10 @@ class TelegramWebhookView(View):
 
 💫 Хотите узнать свое тотемное животное? Нажмите /start"""
 
-            if animal.photo and animal.photo.path:
-                import os
-                if os.path.exists(animal.photo.path):
-                    self.bot.send_photo(chat_id, animal.photo.path, text)
+            if animal.photo and animal.photo.name:
+                photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
+                if os.path.exists(photo_path):
+                    self.bot.send_photo(chat_id, photo_path, text)
                 else:
                     self.bot.send_message(chat_id, text)
             else:
@@ -760,37 +782,16 @@ class TelegramWebhookView(View):
             print(f"Error in show_animal_detail: {e}")
 
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class SetWebhookView(View):
-#
-#
-#     """View для установки webhook"""
-#
-#     def get(self, request):
-#         from zoo.secret import TELEGRAM_ACCESS_TOKEN
-#
-#         # Получаем URL из параметра или строим из запроса
-#         webhook_url = request.GET.get('url')
-#         if not webhook_url:
-#             # Используем текущий хост
-#             webhook_url = request.build_absolute_uri('/telegram-webhook/')
-#
-#         url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/setWebhook"
-#
-#         # Важно: для ngrok используем drop_pending_updates
-#         response = requests.post(url, json={
-#             "url": webhook_url,
-#             "drop_pending_updates": True  # Сбрасываем старые апдейты
-#         })
-#
-#         return JsonResponse(response.json())
-#
-#     def delete(self, request):
-#         from zoo.secret import TELEGRAM_ACCESS_TOKEN
-#
-#         url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/deleteWebhook"
-#         response = requests.post(url, json={"drop_pending_updates": True})
-#         return JsonResponse(response.json())
+@method_decorator(csrf_exempt, name='dispatch')
+class WebhookInfoView(View):
+    """View для получения информации о webhook"""
+
+    def get(self, request):
+        from zoo.secret import TELEGRAM_ACCESS_TOKEN
+
+        url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/getWebhookInfo"
+        response = requests.get(url)
+        return JsonResponse(response.json())
 
 
 @method_decorator(csrf_exempt, name='dispatch')
