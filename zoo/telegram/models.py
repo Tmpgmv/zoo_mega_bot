@@ -111,6 +111,9 @@ class AboutZoo(models.Model):
         help_text="Введите ровно 11 цифр (например: 79123456789)"
     )
 
+    def get_phone(self):
+        return f"+{self.phone[0]}-{self.phone[1:4]}-{self.phone[4:7]}-{self.phone[7:9]}-{self.phone[9:]}"
+
     class Meta:
         verbose_name = "О зоопарке"
         verbose_name_plural = "О зоопарке"
