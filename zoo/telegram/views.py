@@ -9,7 +9,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 
-from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession
+from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
 
@@ -659,3 +659,13 @@ class WebhookInfoView(View):
         url = f"https://api.telegram.org/bot{TELEGRAM_ACCESS_TOKEN}/getWebhookInfo"
         response = requests.get(url)
         return JsonResponse(response.json())
+
+
+
+class PhotoView(TemplateView):
+    template_name = "telegram/photo.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["object"] = Photo.objects.get(pk=self.kwargs["pk"])
+        return context

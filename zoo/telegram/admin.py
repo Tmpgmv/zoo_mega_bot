@@ -26,6 +26,7 @@ admin.site.register(Answer, AnswerAdmin)
 
 class PhotoAdmin(admin.ModelAdmin):
     exclude = []
+    list_display = ["pk", "caption", ]
 
 
 admin.site.register(Photo, PhotoAdmin)
