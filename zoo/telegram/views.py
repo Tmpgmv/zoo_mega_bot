@@ -645,7 +645,7 @@ class TelegramWebhookView(View):
             formatted_phone = about.get_phone()
 
             # Получаем фото зоопарка (первые 3 фото)
-            photos = Photo.objects.all()[:3]
+            photos = Photo.objects.filter(archived=False).all()
 
             # Формируем текст
             about_text = f"""🏛️ <b>О нашем зоопарке</b>
@@ -691,7 +691,7 @@ class TelegramWebhookView(View):
                 if photo.photo and photo.photo.name:
                     photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo.name)
                     if os.path.exists(photo_path):
-                        caption = photo.caption if photo.caption else "Наш зоопарк"
+                        caption = photo.caption if photo.caption else ""
                         self.bot.send_photo(chat_id, photo_path, caption)
 
         except Exception as e:
