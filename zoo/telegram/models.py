@@ -86,7 +86,7 @@ class Photo(models.Model):
     photo = models.ImageField(upload_to='photos/',
                               validators=[FileExtensionValidator(['jpg', 'png'])],
                               verbose_name="Изображение")
-    caption = models.CharField(max_length=100, default="")
+    caption = models.CharField(max_length=100, default="", blank=True, )
 
     def __str__(self):
         return self.caption
