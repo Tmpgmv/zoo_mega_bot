@@ -644,8 +644,8 @@ class TelegramWebhookView(View):
             # Форматируем номер телефона
             formatted_phone = about.get_phone()
 
-            # Получаем фото зоопарка (первые 3 фото)
-            photos = Photo.objects.filter(archived=False).all()
+            # Получаем фото зоопарка
+            photos = Photo.objects.all()
 
             # Формируем текст
             about_text = f"""🏛️ <b>О нашем зоопарке</b>
@@ -669,30 +669,31 @@ class TelegramWebhookView(View):
     • Более 100 видов животных
     • Ежедневные шоу и кормления
     • Контактный зоопарк
-    • Экскурсии для групп
+    • Экскурсии для групп"""
 
-    💫 Хотите узнать свое тотемное животное? Нажмите /start"""
-
-            # Создаем клавиатуру
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "📸 Смотреть фото зоопарка", "callback_data": "zoo_photos"}],
-                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
-                ]
-            }
-
-            # Отправляем информацию
-            self.bot.send_message(chat_id, about_text, keyboard)
+            # Сначала отправляем информацию
+            self.bot.send_message(chat_id, about_text)
 
             # Отправляем фото зоопарка, если они есть
             for photo in photos:
                 if photo.photo and photo.photo.name:
                     photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo.name)
                     if os.path.exists(photo_path):
-                        caption = photo.caption if photo.caption else ""
+                        caption = photo.caption if photo.caption else "Наш зоопарк"
                         self.bot.send_photo(chat_id, photo_path, caption)
+
+            # Меню после всей информации
+            menu_text = """💫 <b>Что бы вы хотели сделать дальше?</b>"""
+
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
+                ]
+            }
+
+            self.bot.send_message(chat_id, menu_text, keyboard)
 
         except Exception as e:
             print(f"Error in show_about_zoo: {e}")
