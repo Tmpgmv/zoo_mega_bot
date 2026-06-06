@@ -97,7 +97,7 @@ class Photo(models.Model):
         verbose_name = "Изображение"
         verbose_name_plural = "Изображения"
 
-class AboutZoo(models.Model):
+class AboutZoo(SingletonModel):
     description = models.TextField(verbose_name="Описание")
     email = models.EmailField(verbose_name="Емейл")
     phone = models.CharField(
