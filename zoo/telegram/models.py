@@ -1,3 +1,4 @@
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from solo.models import SingletonModel
 
@@ -9,7 +10,8 @@ class TelegramSettings(SingletonModel):
         return "Telegram Configuration"
 
     class Meta:
-        verbose_name = "Telegram Configuration"
+        verbose_name = "Опции"
+        verbose_name_plural = "Опции"
 
 
 class Question(models.Model):
@@ -18,6 +20,8 @@ class Question(models.Model):
 
     class Meta:
         ordering = ['order']
+        verbose_name = "Вопрос"
+        verbose_name_plural = "Вопросы"
 
 class Animal(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название животного")
@@ -72,4 +76,44 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f"{self.username or self.user_id} - {'Завершен' if self.completed else 'В процессе'}"
+
+    class Meta:
+        verbose_name = "Сессия"
+        verbose_name_plural = "Сессии"
+
+
+class Photo(models.Model):
+    photo = models.ImageField(upload_to='photos/',
+                              validators=[FileExtensionValidator(['jpg', 'png'])],
+                              verbose_name="Изображение")
+
+    def __str__(self):
+        return self.photo.name
+
+    class Meta:
+        verbose_name = "Изображение"
+        verbose_name_plural = "Изображения"
+
+class AboutZoo(models.Model):
+    description = models.TextField(verbose_name="Описание")
+    email = models.EmailField(verbose_name="Емейл")
+    phone = models.CharField(
+        verbose_name="Телефон",
+        max_length=11,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{11}$',
+                message='Телефон должен содержать ровно 11 цифр без пробелов и знаков',
+                code='invalid_phone'
+            )
+        ],
+        help_text="Введите ровно 11 цифр (например: 79123456789)"
+    )
+
+    class Meta:
+        verbose_name = "О зоопарке"
+        verbose_name_plural = "О зоопарке"
+
+    def __str__(self):
+        return f"Контакты зоопарка"
 
