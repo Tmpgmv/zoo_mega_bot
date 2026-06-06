@@ -30,9 +30,9 @@ class Command(BaseCommand):
         )
 
         owl = Animal.objects.create(
-            name="Сова",
+            name="Филин",
             photo="animals/owl.jpg",
-            description="Сова - символ мудрости, знаний и интуиции."
+            description="Филин - символ мудрости, знаний и интуиции."
         )
 
         bear = Animal.objects.create(

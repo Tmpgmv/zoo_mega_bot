@@ -1,0 +1,59 @@
+# ruff.toml - конфигурация для линтера и форматтера Ruff
+
+# Исключаем лишние директории
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "media",
+    "static",
+]
+
+# Целевая версия Python
+target-version = "py314"
+
+# Правила линтинга
+[lint]
+# Выбираем набор правил
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (сортировка импортов)
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "DJ",  # flake8-django
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "RUF", # Ruff specific rules
+]
+
+# Игнорируем некоторые правила
+ignore = [
+    "E501",   # ignore long lines (let formatter handle it)
+    "DJ008",  # ignore missing __str__ in Django models
+    "DJ012",  # ignore order of model inner classes
+]
+
+# Максимальная сложность функций
+max-complexity = 10
+
+# Настройки сортировки импортов
+[lint.isort]
+known-first-party = ["zoo", "telegram"]
+force-single-line = false
+lines-after-imports = 2
+
+# Настройки форматирования
+[format]
+# Максимальная длина строки
+line-length = 100
+# Использовать кавычки как в примере (сохраняет стиль)
+quote-style = "double"
+# Отступы
+indent-style = "space"
+indent-width = 4
+# Переносы строк
+line-ending = "auto"
