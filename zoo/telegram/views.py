@@ -9,7 +9,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 
-from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo
+from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo, GuardianProgram
 
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
@@ -247,10 +247,13 @@ class TelegramWebhookView(View):
                 self.handle_start(chat_id, username)
             elif text == '/animals':
                 self.handle_animals(chat_id)
+            elif text == '/guardian':
+                self.show_guardian_program(chat_id)
+
             else:
                 self.bot.send_message(
                     chat_id,
-                    "Используйте /start чтобы начать тест или /animals чтобы увидеть всех животных"
+                    "Используйте /start чтобы узнать свое тотемное животное или /animals чтобы увидеть всех животных"
                 )
         except Exception as e:
             print(f"Error handling message: {e}")
@@ -269,9 +272,10 @@ class TelegramWebhookView(View):
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+                    [{"text": "🌿 Узнайте, какое у вас тотемное животное?", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 ]
             }
 
@@ -312,12 +316,13 @@ class TelegramWebhookView(View):
                 "inline_keyboard": animal_buttons + [
                     [{"text": "🌿 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 ]
             }
 
             self.bot.send_message(
                 chat_id,
-                "🐘 <b>Все тотемные животные</b>\n\nВыберите животное чтобы узнать подробнее о нем, или пройдите тест чтобы узнать ваше тотемное животное:",
+                "🐘 <b>Все тотемные животные</b>\n\nВыбери животное чтобы узнать подробнее о нем, или пройди тест чтобы узнать свое тотемное животное:",
                 keyboard
             )
 
@@ -345,6 +350,8 @@ class TelegramWebhookView(View):
                 self.handle_animals(chat_id)
             elif callback_data == "about_zoo":
                 self.show_about_zoo(chat_id)
+            elif callback_data == "guardian_program":  # <-- ДОБАВЬТЕ ЭТУ СТРОКУ
+                self.show_guardian_program(chat_id)
             elif callback_data == "show_zoo_description":
                 self.show_zoo_description(chat_id)
             elif callback_data == "show_zoo_photos":
@@ -385,7 +392,7 @@ class TelegramWebhookView(View):
             if session.is_completed():
                 self.bot.send_message(
                     chat_id,
-                    "Вы уже прошли тест! Напишите /start чтобы пройти заново."
+                    "Вы уже прошли тест для определения тотема! Напишите /start чтобы пройти заново."
                 )
                 return
 
@@ -483,7 +490,7 @@ class TelegramWebhookView(View):
                 strength_message = "💫 <b>Частичное совпадение.</b> Возможно, стоит пройти тест еще раз."
 
             # Формируем текст результата
-            result_text = f"""🎯 <b>Ваше тотемное животное - {primary_animal.name}!</b>
+            result_text = f"""🎯 <b>Да ты - {primary_animal.name}!</b>
 
 📊 <b>Степень соответствия:</b> {percentage}%
 ✨ <b>Набрано очков:</b> {primary_points} из {max_points}
@@ -501,14 +508,20 @@ class TelegramWebhookView(View):
 ━━━━━━━━━━━━━━━━━━━━
 
 💡 <b>Совет:</b> 
-{self._get_animal_advice(primary_animal.name)}"""
+{self._get_animal_advice(primary_animal.name)}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💡 <b>Почему бы тебе не взять его в опеку?:</b> 
+Нажмите /guardian"""
 
             # Создаем клавиатуру для перезапуска
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🔄 Пройти заново", "callback_data": "restart_quiz"}],
+                    [{"text": "🔄 Заново определить тотемное животное", "callback_data": "restart_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -561,14 +574,21 @@ class TelegramWebhookView(View):
 💫 <b>Характеристики:</b>
 • Символизм: {self._get_animal_symbolism(animal.name)}
 • Сильные стороны: {self._get_animal_strengths(animal.name)}
-• Когда появляется: {self._get_animal_when_appears(animal.name)}"""
+• Когда появляется: {self._get_animal_when_appears(animal.name)}
+
+💡 <b>Почему бы тебе не взять его в опеку?:</b> 
+Нажмите /guardian
+
+"""
+
 
             # Создаем клавиатуру с кнопками
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🔄 Пройти тест заново", "callback_data": "restart_quiz"}],
+                    [{"text": "🔄 Узнать тотем заново", "callback_data": "restart_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
@@ -616,10 +636,10 @@ class TelegramWebhookView(View):
     def _get_animal_when_appears(self, animal_name):
         """Когда появляется животное-тотем"""
         appearances = {
-            "Волк": "Когда вам нужна защита и верность близких",
-            "Орел": "Когда вы стоите перед важным решением",
+            "Волк": "Когда тебе нужна защита и верность близких",
+            "Орел": "Когда ты стоишь перед важным решением",
             "Лев": "Когда нужно проявить лидерские качества",
-            "Сова": "Когда ищете ответы на сложные вопросы",
+            "Сова": "Когда ищешь ответы на сложные вопросы",
             "Медведь": "Когда нужна внутренняя сила и спокойствие",
             "Дельфин": "Когда требуется радость и легкость в жизни"
         }
@@ -635,12 +655,13 @@ class TelegramWebhookView(View):
             "inline_keyboard": [
                 [{"text": "📖 Описание и контакты", "callback_data": "show_zoo_description"}],
                 [{"text": "📸 Фото зоопарка", "callback_data": "show_zoo_photos"}],
+                [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
+
             ]
         }
 
         self.bot.send_message(chat_id, text, keyboard)
-
 
     def show_zoo_description(self, chat_id):
         """Показать описание и контакты зоопарка"""
@@ -684,8 +705,9 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "📸 Смотреть фото", "callback_data": "show_zoo_photos"}],
-                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+                    [{"text": "🌿 Узнать тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -729,8 +751,9 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "📖 Описание зоопарка", "callback_data": "show_zoo_description"}],
-                    [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+                    [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -744,6 +767,45 @@ class TelegramWebhookView(View):
             self.bot.send_message(
                 chat_id,
                 "Извините, произошла ошибка при загрузке фото."
+            )
+
+    def show_guardian_program(self, chat_id):
+        """Показать информацию о программе опеки"""
+        try:
+            guardian = GuardianProgram.objects.first()
+
+            if not guardian or not guardian.description:
+                self.bot.send_message(
+                    chat_id,
+                    "🤝 <b>Программа опеки</b>\n\nИнформация о программе опеки временно недоступна. Пожалуйста, зайдите позже."
+                )
+                return
+
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
+                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
+                ]
+            }
+
+            result = guardian.description.strip()
+            about = AboutZoo.objects.first()
+            result += "\n\n"
+            result += "📞 <b>Контакты:</b>\n"
+            result += f"• Email: {about.email}\n"
+            result += f"• Телефон: {about.get_phone()}\n\n"
+
+            self.bot.send_message(chat_id, result, keyboard)
+
+        except Exception as e:
+            print(f"Error in show_guardian_program: {e}")
+            import traceback
+            traceback.print_exc()
+            self.bot.send_message(
+                chat_id,
+                "Извините, произошла ошибка при загрузке информации о программе опеки."
             )
 
 

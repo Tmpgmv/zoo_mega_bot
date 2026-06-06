@@ -20,6 +20,9 @@ class Question(models.Model):
     text = models.CharField(max_length=500, verbose_name="Текст вопроса")
     order = models.IntegerField(default=0, verbose_name="Порядок")
 
+    def __str__(self):
+        return f"{self.text}"
+
     class Meta:
         ordering = ['order']
         verbose_name = "Вопрос"
