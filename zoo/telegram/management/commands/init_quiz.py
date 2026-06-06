@@ -14,37 +14,37 @@ class Command(BaseCommand):
         wolf = Animal.objects.create(
             name="Волк",
             photo="animals/wolf.jpg",
-            description="Волк - символ свободы, независимости и верности стае"
+            description="Волк - символ свободы, независимости и верности стае."
         )
 
         eagle = Animal.objects.create(
             name="Орел",
             photo="animals/eagle.jpg",
-            description="Орел - символ власти, свободы и духовного видения"
+            description="Орел - символ власти, свободы и духовного видения."
         )
 
         lion = Animal.objects.create(
             name="Лев",
             photo="animals/lion.jpg",
-            description="Лев - символ силы, мужества и лидерства"
+            description="Лев - символ силы, мужества и лидерства."
         )
 
         owl = Animal.objects.create(
             name="Сова",
             photo="animals/owl.jpg",
-            description="Сова - символ мудрости, знаний и интуиции"
+            description="Сова - символ мудрости, знаний и интуиции."
         )
 
         bear = Animal.objects.create(
             name="Медведь",
             photo="animals/bear.jpg",
-            description="Медведь - символ силы, защиты и внутренней гармонии"
+            description="Медведь - символ силы, защиты и внутренней гармонии."
         )
 
         dolphin = Animal.objects.create(
             name="Дельфин",
             photo="animals/dolphin.jpg",
-            description="Дельфин - символ дружбы, радости и свободы"
+            description="Дельфин - символ дружбы, радости и свободы."
         )
 
         # Вопрос 1

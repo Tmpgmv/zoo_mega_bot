@@ -726,7 +726,7 @@ class TelegramWebhookView(View):
                 ]
             }
 
-            result_text = f"""🎯 <b>Да ты {animal.name}!</b>
+            result_text = f"""🎯 <b>Да ты {animal.name.lower()}!</b>
 
 ✨ Набрано очков: {result['points']}
 📊 Пройдено вопросов: {result['total_questions']}
