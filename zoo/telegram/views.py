@@ -307,6 +307,7 @@ class TelegramWebhookView(View):
                 chat_id,
                 "🐘 <b>Все тотемные животные</b>\n\nВыберите животное чтобы узнать подробнее:",
                 keyboard
+
             )
         except Exception as e:
             print(f"Error in handle_animals: {e}")
@@ -479,8 +480,7 @@ class TelegramWebhookView(View):
 
     💡 <b>Совет:</b> 
     {self._get_animal_advice(primary_animal.name)}
-
-    Хотите узнать больше о других животных? Нажмите /animals"""
+    """
 
             # Создаем клавиатуру для перезапуска
             keyboard = {
@@ -540,7 +540,10 @@ class TelegramWebhookView(View):
 • Сильные стороны: {self._get_animal_strengths(animal.name)}
 • Когда появляется: {self._get_animal_when_appears(animal.name)}
 
-Хотите узнать свое тотемное животное? Нажмите /start"""
+Пройти тестирование заново? Нажмите /start
+
+Все животные /animals
+"""
 
             if animal.photo and animal.photo.name:
                 photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
