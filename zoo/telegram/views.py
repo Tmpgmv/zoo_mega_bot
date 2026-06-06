@@ -9,7 +9,8 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 
-from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo
+from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo
+
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
 
@@ -640,12 +641,69 @@ class TelegramWebhookView(View):
 
         self.bot.send_message(chat_id, text, keyboard)
 
+    # def show_zoo_description(self, chat_id):
+    #     """Показать описание и контакты зоопарка"""
+    #     try:
+    #         # Получаем информацию о зоопарке
+    #         about = AboutZoo.objects.first()
+    #
+    #         if not about:
+    #             self.bot.send_message(
+    #                 chat_id,
+    #                 "🏛️ <b>Информация о зоопарке временно недоступна.</b>\n\nПожалуйста, зайдите позже."
+    #             )
+    #             return
+    #
+    #         # Форматируем номер телефона
+    #         formatted_phone = about.get_phone()
+    #
+    #         # Формируем текст
+    #         about_text = f"""🏛️ <b>О нашем зоопарке</b>
+    #
+    # 📖 <b>Описание:</b>
+    # {about.description}
+    #
+    # 📞 <b>Контакты:</b>
+    # • Email: {about.email}
+    # • Телефон: {formatted_phone}
+    #
+    # 🌍 <b>Часы работы:</b>
+    # Ежедневно: 9:00 - 21:00
+    #
+    # 🎫 <b>Стоимость билетов:</b>
+    # Взрослый: 500 руб.
+    # Детский: 300 руб.
+    # Льготный: 250 руб.
+    #
+    # ✨ <b>Наши преимущества:</b>
+    # • Более 100 видов животных
+    # • Ежедневные шоу и кормления
+    # • Контактный зоопарк
+    # • Экскурсии для групп"""
+    #
+    #         keyboard = {
+    #             "inline_keyboard": [
+    #                 [{"text": "📸 Смотреть фото", "callback_data": "show_zoo_photos"}],
+    #                 [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
+    #                 [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+    #                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
+    #             ]
+    #         }
+    #
+    #         self.bot.send_message(chat_id, about_text, keyboard)
+    #
+    #     except Exception as e:
+    #         print(f"Error in show_zoo_description: {e}")
+    #         import traceback
+    #         traceback.print_exc()
+    #         self.bot.send_message(
+    #             chat_id,
+    #             "Извините, произошла ошибка при загрузке информации о зоопарке."
+    #         )
+
     def show_zoo_description(self, chat_id):
         """Показать описание и контакты зоопарка"""
         try:
-            from telegram.models import AboutZoo
-
-            # Получаем информацию о зоопарке
             about = AboutZoo.objects.first()
 
             if not about:
@@ -658,37 +716,36 @@ class TelegramWebhookView(View):
             # Форматируем номер телефона
             formatted_phone = about.get_phone()
 
-            # Формируем текст
-            about_text = f"""🏛️ <b>О нашем зоопарке</b>
+            # Очищаем описание - убираем пробелы в начале каждой строки
+            description_lines = about.description.split('\n')
+            clean_description = '\n'.join(line.strip() for line in description_lines)
 
-📖 <b>Описание:</b>
-{about.description}
-
-📞 <b>Контакты:</b>
-• Email: {about.email}
-• Телефон: {formatted_phone}
-
-🌍 <b>Часы работы:</b>
-Ежедневно: 9:00 - 21:00
-
-🎫 <b>Стоимость билетов:</b>
-Взрослый: 500 руб.
-Детский: 300 руб.
-Льготный: 250 руб.
-
-✨ <b>Наши преимущества:</b>
-• Более 100 видов животных
-• Ежедневные шоу и кормления
-• Контактный зоопарк
-• Экскурсии для групп"""
+            # Формируем текст (ВАЖНО: без отступов перед строками!)
+            about_text = (
+                "🏛️ <b>О нашем зоопарке</b>\n\n"
+                "📖 <b>Описание:</b>\n"
+                f"{clean_description}\n\n"
+                "📞 <b>Контакты:</b>\n"
+                f"• Email: {about.email}\n"
+                f"• Телефон: {formatted_phone}\n\n"
+                "🌍 <b>Часы работы:</b>\n"
+                "Ежедневно: 9:00 - 21:00\n\n"
+                "🎫 <b>Стоимость билетов:</b>\n"
+                f"Взрослый: {about.adult_price} руб.\n"
+                f"Льготный (дети, пенсионеры): {about.reduced_price} руб.\n\n"
+                "✨ <b>Наши преимущества:</b>\n"
+                "• Более 100 видов животных\n"
+                "• Ежедневные шоу и кормления\n"
+                "• Контактный зоопарк\n"
+                "• Экскурсии для групп"
+            )
 
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "📸 Смотреть фото", "callback_data": "show_zoo_photos"}],
                     [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
-                    [{"text": "🔙 Назад", "callback_data": "about_zoo"}]
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
 
@@ -706,8 +763,6 @@ class TelegramWebhookView(View):
     def show_zoo_photos(self, chat_id):
         """Показать все фото зоопарка"""
         try:
-            from telegram.models import Photo
-
             photos = Photo.objects.all()
 
             if not photos:
@@ -728,15 +783,14 @@ class TelegramWebhookView(View):
             # Меню после показа фото
             menu_text = """📸 <b>Это все фото нашего зоопарка</b>
 
-Что бы вы хотели сделать дальше?"""
+    Что бы вы хотели сделать дальше?"""
 
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "📖 Описание зоопарка", "callback_data": "show_zoo_description"}],
-                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                     [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🔙 Назад", "callback_data": "about_zoo"}]
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
 

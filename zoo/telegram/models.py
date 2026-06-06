@@ -1,4 +1,6 @@
-from django.core.validators import FileExtensionValidator, RegexValidator
+from decimal import Decimal
+
+from django.core.validators import FileExtensionValidator, RegexValidator, MinValueValidator
 from django.db import models
 from solo.models import SingletonModel
 
@@ -98,7 +100,8 @@ class Photo(models.Model):
         verbose_name_plural = "Изображения"
 
 class AboutZoo(SingletonModel):
-    description = models.TextField(verbose_name="Описание")
+    description = models.TextField(verbose_name="Описание", default="")
+    advantages = models.TextField(verbose_name="Преимущества", default="")
     email = models.EmailField(verbose_name="Емейл")
     phone = models.CharField(
         verbose_name="Телефон",
@@ -113,6 +116,20 @@ class AboutZoo(SingletonModel):
         help_text="Введите ровно 11 цифр (например: 79123456789)"
     )
 
+    adult_price = models.DecimalField(max_digits=10,
+                                      decimal_places=2,
+                                      validators=[MinValueValidator(Decimal('0.1'))],
+                                      verbose_name="Цена взрослого билета",
+                                      default=0)
+    reduced_price = models.DecimalField(max_digits=10,
+                                      decimal_places=2,
+                                      validators=[MinValueValidator(Decimal('0.1'))],
+                                      verbose_name="Цена льготного билета",
+                                      default=0)
+
+
+
+
     def get_phone(self):
         return f"+{self.phone[0]}-{self.phone[1:4]}-{self.phone[4:7]}-{self.phone[7:9]}-{self.phone[9:]}"
 
@@ -121,5 +138,5 @@ class AboutZoo(SingletonModel):
         verbose_name_plural = "О зоопарке"
 
     def __str__(self):
-        return f"Контакты зоопарка"
+        return f"Описание зоопарка"
 
