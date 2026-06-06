@@ -25,6 +25,7 @@ class Question(models.Model):
         verbose_name = "Вопрос"
         verbose_name_plural = "Вопросы"
 
+
 class Animal(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Название животного")
     photo = models.ImageField(upload_to='animals/', verbose_name="Фото животного")
@@ -36,6 +37,7 @@ class Animal(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Answer(models.Model):
     points = models.IntegerField(
@@ -99,6 +101,7 @@ class Photo(models.Model):
         verbose_name = "Изображение"
         verbose_name_plural = "Изображения"
 
+
 class AboutZoo(SingletonModel):
     description = models.TextField(verbose_name="Описание", default="")
     advantages = models.TextField(verbose_name="Преимущества", default="")
@@ -122,21 +125,28 @@ class AboutZoo(SingletonModel):
                                       verbose_name="Цена взрослого билета",
                                       default=0)
     reduced_price = models.DecimalField(max_digits=10,
-                                      decimal_places=2,
-                                      validators=[MinValueValidator(Decimal('0.1'))],
-                                      verbose_name="Цена льготного билета",
-                                      default=0)
-
-
-
+                                        decimal_places=2,
+                                        validators=[MinValueValidator(Decimal('0.1'))],
+                                        verbose_name="Цена льготного билета",
+                                        default=0)
 
     def get_phone(self):
         return f"+{self.phone[0]}-{self.phone[1:4]}-{self.phone[4:7]}-{self.phone[7:9]}-{self.phone[9:]}"
+
+    def __str__(self):
+        return f"Описание зоопарка"
 
     class Meta:
         verbose_name = "О зоопарке"
         verbose_name_plural = "О зоопарке"
 
-    def __str__(self):
-        return f"Описание зоопарка"
 
+class GuardianProgram(SingletonModel):
+    description = models.TextField(verbose_name="Описание", default="")
+
+    def __str__(self):
+        return f"Программа опеки"
+
+    class Meta:
+        verbose_name = "Программа опеки"
+        verbose_name_plural = "Программа опеки"

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from telegram.models import TelegramSettings, Question, Answer, Photo, AboutZoo
+from telegram.models import TelegramSettings, Question, Answer, Photo, AboutZoo, GuardianProgram
 
 
 class TelegramSettingsAdmin(admin.ModelAdmin):
@@ -37,3 +37,11 @@ class AboutZooAdmin(admin.ModelAdmin):
 
 
 admin.site.register(AboutZoo, AboutZooAdmin)
+
+
+class GuardianProgramAdmin(admin.ModelAdmin):
+    exclude = []
+
+
+admin.site.register(GuardianProgram, GuardianProgramAdmin)
+
