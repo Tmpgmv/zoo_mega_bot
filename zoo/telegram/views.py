@@ -641,65 +641,6 @@ class TelegramWebhookView(View):
 
         self.bot.send_message(chat_id, text, keyboard)
 
-    # def show_zoo_description(self, chat_id):
-    #     """Показать описание и контакты зоопарка"""
-    #     try:
-    #         # Получаем информацию о зоопарке
-    #         about = AboutZoo.objects.first()
-    #
-    #         if not about:
-    #             self.bot.send_message(
-    #                 chat_id,
-    #                 "🏛️ <b>Информация о зоопарке временно недоступна.</b>\n\nПожалуйста, зайдите позже."
-    #             )
-    #             return
-    #
-    #         # Форматируем номер телефона
-    #         formatted_phone = about.get_phone()
-    #
-    #         # Формируем текст
-    #         about_text = f"""🏛️ <b>О нашем зоопарке</b>
-    #
-    # 📖 <b>Описание:</b>
-    # {about.description}
-    #
-    # 📞 <b>Контакты:</b>
-    # • Email: {about.email}
-    # • Телефон: {formatted_phone}
-    #
-    # 🌍 <b>Часы работы:</b>
-    # Ежедневно: 9:00 - 21:00
-    #
-    # 🎫 <b>Стоимость билетов:</b>
-    # Взрослый: 500 руб.
-    # Детский: 300 руб.
-    # Льготный: 250 руб.
-    #
-    # ✨ <b>Наши преимущества:</b>
-    # • Более 100 видов животных
-    # • Ежедневные шоу и кормления
-    # • Контактный зоопарк
-    # • Экскурсии для групп"""
-    #
-    #         keyboard = {
-    #             "inline_keyboard": [
-    #                 [{"text": "📸 Смотреть фото", "callback_data": "show_zoo_photos"}],
-    #                 [{"text": "🌿 Начать тест", "callback_data": "start_quiz"}],
-    #                 [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-    #                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
-    #             ]
-    #         }
-    #
-    #         self.bot.send_message(chat_id, about_text, keyboard)
-    #
-    #     except Exception as e:
-    #         print(f"Error in show_zoo_description: {e}")
-    #         import traceback
-    #         traceback.print_exc()
-    #         self.bot.send_message(
-    #             chat_id,
-    #             "Извините, произошла ошибка при загрузке информации о зоопарке."
-    #         )
 
     def show_zoo_description(self, chat_id):
         """Показать описание и контакты зоопарка"""
@@ -777,7 +718,7 @@ class TelegramWebhookView(View):
                 if photo.photo and photo.photo.name:
                     photo_path = os.path.join(settings.MEDIA_ROOT, photo.photo.name)
                     if os.path.exists(photo_path):
-                        caption = photo.caption if photo.caption else "Наш зоопарк"
+                        caption = photo.caption if photo.caption else ""
                         self.bot.send_photo(chat_id, photo_path, caption)
 
             # Меню после показа фото
