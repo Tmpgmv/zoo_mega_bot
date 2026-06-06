@@ -32,6 +32,16 @@ class Animal(models.Model):
         return self.name
 
 class Answer(models.Model):
+    points = models.IntegerField(
+        choices=[
+            (0, 'Совсем не подходит'),
+            (1, 'Слабо подходит'),
+            (2, 'Частично подходит'),
+            (3, 'Хорошо подходит'),
+            (4, 'Идеально подходит'),
+        ],
+        default=1,
+        verbose_name="Степень соответствия")
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
     text = models.CharField(max_length=200, verbose_name="Текст ответа")
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='answers',

@@ -93,6 +93,47 @@ class QuizSession:
             defaults={'username': username or ''}
         )
 
+    def calculate_result_advanced(self):
+        """Расширенный подсчет результатов с топ-3 животными"""
+        answers_data = self.session.answers or {}
+        animal_scores = {}
+        animal_details = {}
+
+        for answer_id in answers_data.values():
+            try:
+                answer = Answer.objects.select_related('animal').get(id=int(answer_id))
+                animal = answer.animal
+
+                animal_scores[animal.name] = animal_scores.get(animal.name, 0) + answer.points
+                animal_details[animal.name] = animal
+
+            except (Answer.DoesNotExist, ValueError):
+                continue
+
+        if not animal_scores:
+            return None
+
+        # Сортируем животных по очкам
+        sorted_animals = sorted(
+            animal_scores.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        # Топ-3 животных (дополняем до 3 если нужно)
+        top_animals = sorted_animals[:3]
+        while len(top_animals) < 3:
+            top_animals.append((None, 0))
+
+        return {
+            'primary': top_animals[0],  # Главный тотем
+            'secondary': top_animals[1],  # Второстепенный
+            'tertiary': top_animals[2],  # Дополнительный
+            'all_scores': animal_scores,
+            'total_questions': len(self.get_all_questions())  # Добавляем total_questions
+        }
+
+
     def reset(self):
         """Сброс сессии"""
         self.session.current_question = 0
@@ -210,8 +251,10 @@ class TelegramWebhookView(View):
             elif text == '/animals':
                 self.handle_animals(chat_id)
             else:
-                self.bot.send_message(chat_id,
-                                      "Используйте /start чтобы начать тест или /animals чтобы увидеть всех животных")
+                self.bot.send_message(
+                    chat_id,
+                    "Используйте /start чтобы начать тест или /animals чтобы увидеть всех животных"
+                )
         except Exception as e:
             print(f"Error handling message: {e}")
 
@@ -241,10 +284,16 @@ class TelegramWebhookView(View):
     def handle_animals(self, chat_id):
         """Показать список животных"""
         try:
+            print(f"Showing animals for chat_id: {chat_id}")
+
             animals = Animal.objects.all()
+            print(f"Found {animals.count()} animals")
 
             if not animals:
-                self.bot.send_message(chat_id, "Животные пока не добавлены")
+                self.bot.send_message(
+                    chat_id,
+                    "Животные пока не добавлены. Сначала выполните python manage.py init_quiz"
+                )
                 return
 
             keyboard = {
@@ -261,6 +310,8 @@ class TelegramWebhookView(View):
             )
         except Exception as e:
             print(f"Error in handle_animals: {e}")
+            import traceback
+            traceback.print_exc()
 
     def handle_callback(self, callback):
         """Обработка callback запросов"""
@@ -268,6 +319,8 @@ class TelegramWebhookView(View):
             chat_id = callback['message']['chat']['id']
             callback_id = callback['id']
             callback_data = callback.get('data', '')
+
+            print(f"Callback received: {callback_data}")
 
             # Отвечаем на callback
             self.bot.answer_callback(callback_id)
@@ -287,9 +340,13 @@ class TelegramWebhookView(View):
                 session = QuizSession(chat_id)
                 session.reset()
                 self.start_quiz(session, chat_id)
+            else:
+                print(f"Unknown callback: {callback_data}")
 
         except Exception as e:
             print(f"Error handling callback: {e}")
+            import traceback
+            traceback.print_exc()
 
     def start_quiz(self, session, chat_id):
         """Начало теста"""
@@ -303,7 +360,10 @@ class TelegramWebhookView(View):
         """Обработка ответа пользователя"""
         try:
             if session.is_completed():
-                self.bot.send_message(chat_id, "Вы уже прошли тест! Напишите /start чтобы пройти заново.")
+                self.bot.send_message(
+                    chat_id,
+                    "Вы уже прошли тест! Напишите /start чтобы пройти заново."
+                )
                 return
 
             answer_id = int(callback_data.split("_")[1])
@@ -321,6 +381,8 @@ class TelegramWebhookView(View):
 
         except Exception as e:
             print(f"Error in process_answer: {e}")
+            import traceback
+            traceback.print_exc()
 
     def send_current_question(self, session, chat_id):
         """Отправка текущего вопроса пользователю"""
@@ -350,19 +412,75 @@ class TelegramWebhookView(View):
             print(f"Error in send_current_question: {e}")
             import traceback
             traceback.print_exc()
-            # В случае ошибки отправляем хотя бы текст
-            self.bot.send_message(chat_id, "Извините, произошла ошибка при загрузке вопроса. Попробуйте /start")
+            self.bot.send_message(
+                chat_id,
+                "Извините, произошла ошибка при загрузке вопроса. Попробуйте /start"
+            )
 
     def send_result(self, session, chat_id):
-        """Отправка результата теста с фото животного"""
+        """Отправка результата теста с фото животного и топ-3 тотемов"""
         try:
-            result = session.calculate_result()
+            result = session.calculate_result_advanced()
 
-            if not result or not result['animal']:
-                self.bot.send_message(chat_id, "😕 Что-то пошло не так. Попробуйте /start заново.")
+            if not result or not result['primary']:
+                self.bot.send_message(
+                    chat_id,
+                    "😕 Что-то пошло не так. Попробуйте /start заново."
+                )
                 return
 
-            animal = result['animal']
+            primary_animal_name, primary_points = result['primary']
+            secondary_animal_name, secondary_points = result['secondary'] if result['secondary'] else (None, 0)
+            tertiary_animal_name, tertiary_points = result['tertiary'] if result['tertiary'] else (None, 0)
+
+            # Получаем объект животного по имени
+            try:
+                primary_animal = Animal.objects.get(name=primary_animal_name)
+            except Animal.DoesNotExist:
+                self.bot.send_message(
+                    chat_id,
+                    f"😕 Животное '{primary_animal_name}' не найдено. Попробуйте /start заново."
+                )
+                return
+
+            total_questions = result['total_questions']
+            max_points = total_questions * 4
+
+            # Вычисляем процент соответствия для главного тотема
+            percentage = int((primary_points / max_points) * 100)
+
+            # Определяем силу связи
+            if percentage >= 80:
+                strength_message = "🔮 <b>Это идеальное попадание!</b> Животное идеально отражает вашу сущность."
+            elif percentage >= 60:
+                strength_message = "✨ <b>Очень сильная связь!</b> Вы действительно похожи на это животное."
+            elif percentage >= 40:
+                strength_message = "🌿 <b>Хорошее соответствие.</b> У вас много общих черт."
+            else:
+                strength_message = "💫 <b>Частичное совпадение.</b> Возможно, стоит пройти тест еще раз."
+
+            # Формируем текст результата
+            result_text = f"""🎯 <b>Ваше тотемное животное - {primary_animal.name}!</b>
+
+    📊 <b>Степень соответствия:</b> {percentage}%
+    ✨ <b>Набрано очков:</b> {primary_points} из {max_points}
+    {strength_message}
+
+    📖 <b>Описание:</b>
+    {primary_animal.description}
+
+    ━━━━━━━━━━━━━━━━━━━━
+    <b>🏆 Ваши топ-3 тотемных животных:</b>
+
+    1️⃣ <b>{primary_animal_name if primary_animal_name else '—'}</b> — {primary_points} очков
+    2️⃣ <b>{secondary_animal_name if secondary_animal_name else '—'}</b> — {secondary_points} очков
+    3️⃣ <b>{tertiary_animal_name if tertiary_animal_name else '—'}</b> — {tertiary_points} очков
+    ━━━━━━━━━━━━━━━━━━━━
+
+    💡 <b>Совет:</b> 
+    {self._get_animal_advice(primary_animal.name)}
+
+    Хотите узнать больше о других животных? Нажмите /animals"""
 
             # Создаем клавиатуру для перезапуска
             keyboard = {
@@ -372,21 +490,10 @@ class TelegramWebhookView(View):
                 ]
             }
 
-            result_text = f"""🎯 <b>Да ты {animal.name.lower()}!</b>
-
-✨ Набрано очков: {result['points']}
-📊 Пройдено вопросов: {result['total_questions']}
-
-📖 <b>Описание:</b>
-{animal.description}
-
-🌿 Это животное отражает вашу сущность и внутреннюю силу."""
-
             # Отправляем результат с фото животного
-            if animal.photo and animal.photo.name:
-                # Получаем полный путь к фото животного
-                photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
-                print(f"Sending animal photo from: {photo_path}")  # Отладочный вывод
+            if primary_animal.photo and primary_animal.photo.name:
+                photo_path = os.path.join(settings.MEDIA_ROOT, primary_animal.photo.name)
+                print(f"Sending animal photo from: {photo_path}")
                 if os.path.exists(photo_path):
                     self.bot.send_photo(chat_id, photo_path, result_text, keyboard)
                 else:
@@ -401,6 +508,22 @@ class TelegramWebhookView(View):
             print(f"Error in send_result: {e}")
             import traceback
             traceback.print_exc()
+            self.bot.send_message(
+                chat_id,
+                "Извините, произошла ошибка при подсчете результатов. Попробуйте /start"
+            )
+
+    def _get_animal_advice(self, animal_name):
+        """Получить совет на основе тотемного животного"""
+        advice = {
+            "Волк": "Развивайте независимость и верность стае. Доверяйте своей интуиции.",
+            "Орел": "Смотрите на мир с высоты. Не бойтесь расширять свои горизонты.",
+            "Лев": "Проявляйте лидерские качества. Будьте смелы в своих решениях.",
+            "Сова": "Используйте свою мудрость. Доверяйте знаниям и опыту.",
+            "Медведь": "Найдите баланс между силой и спокойствием. Защищайте близких.",
+            "Дельфин": "Сохраняйте радость и легкость. Цените дружбу и общение."
+        }
+        return advice.get(animal_name, "Слушайте свое сердце и следуйте своей интуиции.")
 
     def show_animal_detail(self, chat_id, animal_id):
         """Показать детальную информацию о животном"""
@@ -409,9 +532,15 @@ class TelegramWebhookView(View):
 
             text = f"""<b>🦊 {animal.name}</b>
 
-📖 {animal.description}
+📖 <b>Описание:</b>
+{animal.description}
 
-💫 Хотите узнать свое тотемное животное? Нажмите /start"""
+💫 <b>Характеристики:</b>
+• Символизм: {self._get_animal_symbolism(animal.name)}
+• Сильные стороны: {self._get_animal_strengths(animal.name)}
+• Когда появляется: {self._get_animal_when_appears(animal.name)}
+
+Хотите узнать свое тотемное животное? Нажмите /start"""
 
             if animal.photo and animal.photo.name:
                 photo_path = os.path.join(settings.MEDIA_ROOT, animal.photo.name)
@@ -426,6 +555,42 @@ class TelegramWebhookView(View):
             self.bot.send_message(chat_id, "Животное не найдено")
         except Exception as e:
             print(f"Error in show_animal_detail: {e}")
+
+    def _get_animal_symbolism(self, animal_name):
+        """Получить символизм животного"""
+        symbols = {
+            "Волк": "Свобода, независимость, верность, интуиция",
+            "Орел": "Власть, свобода, духовное видение, трансформация",
+            "Лев": "Сила, мужество, лидерство, благородство",
+            "Сова": "Мудрость, знания, интуиция, проницательность",
+            "Медведь": "Сила, защита, внутренняя гармония, исцеление",
+            "Дельфин": "Дружба, радость, свобода, интеллект"
+        }
+        return symbols.get(animal_name, "Мудрость и сила")
+
+    def _get_animal_strengths(self, animal_name):
+        """Получить сильные стороны животного"""
+        strengths = {
+            "Волк": "Верность, выносливость, командный дух",
+            "Орел": "Видение, решительность, смелость",
+            "Лев": "Харизма, уверенность, защита",
+            "Сова": "Аналитический ум, терпение, наблюдательность",
+            "Медведь": "Стойкость, заботливость, самоанализ",
+            "Дельфин": "Коммуникабельность, оптимизм, креативность"
+        }
+        return strengths.get(animal_name, "Уникальные качества")
+
+    def _get_animal_when_appears(self, animal_name):
+        """Когда появляется животное-тотем"""
+        appearances = {
+            "Волк": "Когда вам нужна защита и верность близких",
+            "Орел": "Когда вы стоите перед важным решением",
+            "Лев": "Когда нужно проявить лидерские качества",
+            "Сова": "Когда ищете ответы на сложные вопросы",
+            "Медведь": "Когда нужна внутренняя сила и спокойствие",
+            "Дельфин": "Когда требуется радость и легкость в жизни"
+        }
+        return appearances.get(animal_name, "В моменты важных жизненных выборов")
 
 
 @method_decorator(csrf_exempt, name='dispatch')
