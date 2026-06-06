@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
-from telegram.models import Question, Answer, Animal
+
+from telegram.models import Animal, Answer, Question
 
 
 class Command(BaseCommand):

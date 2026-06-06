@@ -1,23 +1,15 @@
-from django.conf import settings
-from django.views.generic import TemplateView
 import json
-import requests
 import os
-from django.http import JsonResponse
-from django.views import View
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from telegram.models import Question, Answer, UserSession, Animal
-from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
-
-import json
 import requests
+from django.conf import settings
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from telegram.models import Question, Answer, UserSession, Animal, TelegramSettings
+from django.views.generic import TemplateView
+
+from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
 
@@ -25,7 +17,7 @@ class HelpView(TemplateView):
     template_name = "telegram/webhook.html"
 
     def get_context_data(self, **kwargs):
-        context = super(HelpView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["BOT_TOKEN"] = TELEGRAM_ACCESS_TOKEN
         context["HTTPS_URL"] = TelegramSettings.objects.first().webhook_url
         return context
