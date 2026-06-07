@@ -170,6 +170,8 @@ class Feedback(models.Model):
     rating = models.IntegerField(choices=RATING_CHOICES, verbose_name="Оценка")
     comment = models.TextField(blank=True, verbose_name="Комментарий")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    flag = models.BooleanField(default=False, verbose_name="Флаг")
+    handled = models.BooleanField(default=False, verbose_name="Отработано")
 
     def __str__(self):
         return f"Отзыв от {self.username or self.user_id} - {self.get_rating_display()}"
@@ -177,4 +179,23 @@ class Feedback(models.Model):
     class Meta:
         verbose_name = "Отзыв"
         verbose_name_plural = "Отзывы"
+        ordering = ['-created_at']
+
+
+
+class PotentialGuardian(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата")
+    username = models.CharField(max_length=255, blank=True, verbose_name="Имя пользователя")
+    quiz_result = models.TextField(default="", verbose_name="Результаты викторины")
+    message = models.TextField(default="", verbose_name="Сообщение от пользователя")
+    flag = models.BooleanField(default=False, verbose_name="Флаг")
+    handled = models.BooleanField(default=False, verbose_name="Отработано")
+
+
+    def __str__(self):
+        return f"От {self.username} - {self.message[:15]}"
+
+    class Meta:
+        verbose_name = "Потенциальный опекун"
+        verbose_name_plural = "Потенциальные опекуны"
         ordering = ['-created_at']

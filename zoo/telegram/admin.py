@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from telegram.models import TelegramSettings, Question, Answer, Photo, AboutZoo, GuardianProgram, Animal, Feedback
+from telegram.models import TelegramSettings, Question, Answer, Photo, AboutZoo, GuardianProgram, Animal, Feedback, \
+    PotentialGuardian
 
 
 class TelegramSettingsAdmin(admin.ModelAdmin):
@@ -56,7 +57,16 @@ admin.site.register(Animal, AnimalAdmin)
 
 class FeedbackAdmin(admin.ModelAdmin):
     exclude = []
-    list_display = ["pk", "created_at", "username", "comment", ]
+    list_display = ["pk", "created_at", "username", "flag", "handled", ]
 
 
 admin.site.register(Feedback, FeedbackAdmin)
+
+
+
+class PotentialGuardianAdmin(admin.ModelAdmin):
+    exclude = []
+    list_display = ["pk", "created_at", "username", "flag", "handled", ]
+
+
+admin.site.register(PotentialGuardian, PotentialGuardianAdmin)

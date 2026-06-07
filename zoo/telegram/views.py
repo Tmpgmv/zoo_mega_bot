@@ -219,6 +219,14 @@ class TelegramWebhookView(View):
     def _clear_temp_rating(self, chat_id):
         cache.delete(f'temp_rating_{chat_id}')
 
+
+    def _get_quiz_rezult(self, username):
+        return cache.get(f'temp_quiz_rezult_{username}')
+
+    def _set_quiz_rezult(self, username, totems):
+        cache.set(f'temp_quiz_rezult_{username}', totems, timeout=3600)  # 1 час
+
+
     bot = TelegramBot()
 
     def post(self, request):
@@ -256,9 +264,9 @@ class TelegramWebhookView(View):
 
         keyboard = {
             "inline_keyboard": [
-                [{"text": "🦘 Пройти викторину заново", "callback_data": "restart_quiz"}],
+                [{"text": "🦘 Пройти викторину ещё раз", "callback_data": "restart_quiz"}],
                 [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
-                [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
+                [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                 [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
@@ -316,9 +324,9 @@ class TelegramWebhookView(View):
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🐻 Узнать, какое у тебя тотемное животное?", "callback_data": "start_quiz"}],
+                    [{"text": "🐻 Узнать, какое у тебя тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 ]
@@ -360,7 +368,7 @@ class TelegramWebhookView(View):
             keyboard = {
                 "inline_keyboard": animal_buttons + [
                     [{"text": "🐨 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                 ]
@@ -512,6 +520,19 @@ class TelegramWebhookView(View):
         session.reset()
         self.start_quiz(session, chat_id)
 
+    def _prepare_totems_for_caching(self, totems):
+
+        """Подготовка топ-3 тотемов для кеширования"""
+        result = {
+            'primary': totems.get("primary_animal_name"),
+            'secondary': totems.get("secondary_animal_name"),
+            'tertiary': totems.get("tertiary_animal_name"),
+            'primary_points': totems.get("primary_points", 0),
+            'secondary_points': totems.get("secondary_points", 0),
+            'tertiary_points': totems.get("tertiary_points", 0),
+        }
+        return result
+
     def send_result(self, session, chat_id):
         """Отправка результата теста с фото животного и топ-3 тотемов"""
         try:
@@ -527,6 +548,18 @@ class TelegramWebhookView(View):
             primary_animal_name, primary_points = result['primary']
             secondary_animal_name, secondary_points = result['secondary'] if result['secondary'] else (None, 0)
             tertiary_animal_name, tertiary_points = result['tertiary'] if result['tertiary'] else (None, 0)
+
+            totems_for_caching = self._prepare_totems_for_caching({
+                "primary_animal_name": primary_animal_name,
+                "secondary_animal_name": secondary_animal_name,
+                "tertiary_animal_name": tertiary_animal_name,
+                "primary_points": primary_points,
+                "secondary_points": secondary_points,
+                "tertiary_points": tertiary_points,
+            })
+
+            username = session.session.username or f"user_{chat_id}"
+            self._set_quiz_rezult(username, totems_for_caching)
 
             # Получаем объект животного по имени
             try:
@@ -645,7 +678,7 @@ class TelegramWebhookView(View):
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти викторину заново", "callback_data": "restart_quiz"}],  # <-- ДОБАВЛЕНО
                     [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
