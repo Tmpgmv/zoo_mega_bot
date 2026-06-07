@@ -5,3 +5,4 @@ reportlab==4.5.1
 CairoSVG==2.9.0
 django-solo==2.5.1
 ruff==0.15.16
+django-cachalot==2.9.0
