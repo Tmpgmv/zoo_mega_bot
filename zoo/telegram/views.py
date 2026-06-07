@@ -212,7 +212,7 @@ class QuizSession:
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class TelegramWebhookView(LoginRequiredMixin, View):
+class TelegramWebhookView(View):
     """Основной webhook для обработки сообщений"""
 
     def _get_temp_rating(self, chat_id):
@@ -280,7 +280,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
         keyboard = {
             "inline_keyboard": [
                 [{"text": "🦘 Пройти викторину ещё раз", "callback_data": "restart_quiz"}],
-                [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                 [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                 [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
@@ -349,10 +349,11 @@ class TelegramWebhookView(LoginRequiredMixin, View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "🐻 Узнать, какое у тебя тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                    [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
 
@@ -388,13 +389,14 @@ class TelegramWebhookView(LoginRequiredMixin, View):
             if row:
                 animal_buttons.append(row)
 
-            # Добавляем кнопку для прохождения теста
+            # Добавляем кнопки
             keyboard = {
                 "inline_keyboard": animal_buttons + [
                     [{"text": "🐨 Пройти тест и узнать тотемное животное", "callback_data": "start_quiz"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
                 ]
             }
 
@@ -662,7 +664,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
                 "inline_keyboard": [
                     share_buttons,  # Кнопки соцсетей в одном ряду
                     [{"text": "🔄 Пройти викторину ещё раз", "callback_data": "restart_quiz"}],
-                    [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                    [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
@@ -733,7 +735,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
             keyboard = {
                 "inline_keyboard": [
                     [{"text": "🔄 Пройти викторину заново", "callback_data": "restart_quiz"}],  # <-- ДОБАВЛЕНО
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
@@ -855,7 +857,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
                 "inline_keyboard": [
                     [{"text": "📸 Смотреть фото", "callback_data": "show_zoo_photos"}],
                     [{"text": "🌿 Узнать тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
@@ -902,7 +904,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
                 "inline_keyboard": [
                     [{"text": "📖 Описание зоопарка", "callback_data": "show_zoo_description"}],
                     [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
+                    [{"text": "🐾 Посмотреть тотемных животных", "callback_data": "show_animals"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                     [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
@@ -1156,7 +1158,7 @@ class TelegramWebhookView(LoginRequiredMixin, View):
                 f"Никогда такого не было и вот опять. Произошла ошибка при сохранении заявки. Попробуй позже или звони {about_zoo.get_phone()} пиши нам на email: {about_zoo.email}"
             )
 
-@method_decorator(staff_member_required, name='dispatch')
+
 @method_decorator(csrf_exempt, name='dispatch')
 class WebhookInfoView(LoginRequiredMixin, View):
     """View для получения информации о webhook"""
