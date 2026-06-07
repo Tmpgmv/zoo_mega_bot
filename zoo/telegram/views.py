@@ -261,6 +261,11 @@ class TelegramWebhookView(View):
 
         self.bot.send_message(chat_id, text, keyboard)
 
+    def _clear_waiting_for_feedback(self, chat_id):
+        # Очищаем состояния ожидания
+        self.waiting_for_feedback_comment[chat_id] = False
+        self.temp_rating.pop(chat_id, None)
+
     def handle_message(self, message):
         """Обработка текстовых сообщений"""
         try:
@@ -273,9 +278,6 @@ class TelegramWebhookView(View):
                 # Это комментарий к отзыву
                 rating = self.temp_rating.get(chat_id, 5)  # По умолчанию 5, если рейтинг не сохранен
                 self.save_feedback(chat_id, username, rating, text)
-                # Очищаем состояния
-                self.waiting_for_feedback_comment[chat_id] = False
-                self.temp_rating.pop(chat_id, None)
                 return
 
             if text == '/start':
@@ -287,9 +289,7 @@ class TelegramWebhookView(View):
             elif text == '/feedback':
                 self.show_feedback_menu(chat_id)
             elif text == '/cancel':
-                # Очищаем состояния при отмене
-                self.waiting_for_feedback_comment[chat_id] = False
-                self.temp_rating.pop(chat_id, None)
+
                 self.bot.send_message(chat_id, "Действие отменено. Возвращаюсь в главное меню.")
                 self.handle_start(chat_id, username)
             else:
@@ -856,7 +856,7 @@ class TelegramWebhookView(View):
 
             text = f"""💬 <b>Спасибо за оценку {rating}⭐!</b>
 
-    Расскажи подробнее, что тебе понравилось или не понравилось? Можешь оставить комментарий или просто нажать "Пропустить".
+    Но она еще не сохранена. Чтобы ее сохранить, оставь комментарий или просто нажми "Пропустить".   
 
     Твое мнение поможет нам стать лучше!"""
 
@@ -915,10 +915,7 @@ class TelegramWebhookView(View):
             }
 
             self.bot.send_message(chat_id, text, keyboard)
-
-            # Убираем состояние ожидания
-            if hasattr(self, 'waiting_for_feedback_comment'):
-                self.waiting_for_feedback_comment[chat_id] = False
+            self._clear_waiting_for_feedback(chat_id)
 
         except Exception as e:
             print(f"Error saving feedback: {e}")
