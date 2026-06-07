@@ -56,6 +56,7 @@ admin.site.register(Animal, AnimalAdmin)
 
 class FeedbackAdmin(admin.ModelAdmin):
     exclude = []
+    list_display = ["pk", "created_at", "username", "comment", ]
 
 
 admin.site.register(Feedback, FeedbackAdmin)

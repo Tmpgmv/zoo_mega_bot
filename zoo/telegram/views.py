@@ -280,9 +280,11 @@ class TelegramWebhookView(View):
                 self.bot.send_message(chat_id, "Действие отменено. Возвращаюсь в главное меню.")
                 self.handle_start(chat_id, username)
             else:
+                # Это комментарий. Его надо записать.
+
                 self.bot.send_message(
                     chat_id,
-                    "Используйте /start чтобы узнать свое тотемное животное или /animals чтобы увидеть всех животных"
+                    "Спасибо! Можно перейти в главное меню /main_menu ."
                 )
         except Exception as e:
             print(f"Error handling message: {e}")
@@ -295,13 +297,13 @@ class TelegramWebhookView(View):
 
             welcome_text = """🐺 <b>Добро пожаловать в тест "Тотемное животное"!</b>
 
-Ответьте на несколько вопросов, и я расскажу, какое животное является вашим тотемом.
+Ответь на несколько вопросов, и я расскажу, какое животное является твоим тотемом.
 
-🌿 <b>Готовы?</b> Нажмите кнопку ниже чтобы начать!"""
+🌿 <b>Готов?</b> Нажми кнопку ниже чтобы начать!"""
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🐻 Узнайте, какое у вас тотемное животное?", "callback_data": "start_quiz"}],
+                    [{"text": "🐻 Узнать, какое у тебя тотемное животное?", "callback_data": "start_quiz"}],
                     [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
                     [{"text": "🏛️ О зоопарке / Контакты", "callback_data": "about_zoo"}],
                     [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
@@ -324,7 +326,7 @@ class TelegramWebhookView(View):
             if not animals:
                 self.bot.send_message(
                     chat_id,
-                    "Животные пока не добавлены. Сначала выполните python manage.py init_quiz"
+                    "Животные пока не добавлены." #  Надо выполнить python manage.py init_quiz
                 )
                 return
 
@@ -394,7 +396,7 @@ class TelegramWebhookView(View):
                 rating = callback_data.split('_')[1]
                 if rating in ['1', '2', '3', '4', '5']:
                     self.process_feedback_rating(chat_id, int(rating), username)
-                elif rating == "write_comment":
+                elif rating == "write-comment":
                     self.ask_for_feedback_comment(chat_id)
                 elif rating == "skip":
                     rating_value = self.temp_rating.get(chat_id, 5)
@@ -435,7 +437,7 @@ class TelegramWebhookView(View):
             if session.is_completed():
                 self.bot.send_message(
                     chat_id,
-                    "Вы уже прошли тест для определения тотема! Напишите /start чтобы пройти заново."
+                    "Ты проешл тест для определения тотема! Повторить викторину /start_quiz или выйти в главное меню /start ."
                 )
                 return
 
@@ -487,7 +489,7 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                "Извините, произошла ошибка при загрузке вопроса. Попробуйте /start"
+                "Извини, произошла ошибка при загрузке вопроса. Попробуй /start"
             )
 
     def restart_quiz(self, chat_id):
@@ -504,7 +506,7 @@ class TelegramWebhookView(View):
             if not result or not result['primary']:
                 self.bot.send_message(
                     chat_id,
-                    "😕 Что-то пошло не так. Попробуйте /start заново."
+                    "😕 Что-то пошло не так. Попробуй /start заново."
                 )
                 return
 
@@ -819,8 +821,7 @@ class TelegramWebhookView(View):
         """Показать меню обратной связи"""
         text = """💬 <b>Обратная связь</b>
 
-    Так! Не ругаться. Что ты хочешь нам сказать хорошего.
-    Как тебе зоопарк?"""
+    Так! Не ругаться. Как тебе зоопарк?"""
 
         keyboard = {
             "inline_keyboard": [
@@ -849,7 +850,7 @@ class TelegramWebhookView(View):
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "✏️ Написать комментарий", "callback_data": "feedback_write_comment"}],
+                    [{"text": "✏️ Написать комментарий", "callback_data": "feedback_write-comment"}],
                     [{"text": "⏭️ Пропустить", "callback_data": "feedback_skip"}],
                     [{"text": "🔙 Назад", "callback_data": "feedback_menu"}],
                 ]
@@ -864,11 +865,11 @@ class TelegramWebhookView(View):
         """Запросить комментарий к отзыву"""
         text = """💬 <b>Напишите ваш комментарий</b>
 
-    Пожалуйста, напишите сообщение с вашими пожеланиями или замечаниями.
+    Пожалуйста, напиши сообщение с пожеланиями или замечаниями.
 
-    Вы можете написать что угодно, а я сохраню ваш отзыв.
+    Ты можешь написать что угодно, а я сохраню твой отзыв.
 
-    Чтобы отменить, нажмите /cancel"""
+    Чтобы отменить, нажми /cancel"""
 
         self.bot.send_message(chat_id, text)
         # Устанавливаем состояние ожидания комментария
