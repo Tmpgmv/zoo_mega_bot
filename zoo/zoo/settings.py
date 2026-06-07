@@ -12,10 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -27,7 +25,6 @@ SECRET_KEY = 'django-insecure-0pyn6l^54)*kgfn7vt3lbc5su+8t6=1ef^jy+v*9emq95()kgx
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-
 
 # Application definition
 
@@ -46,7 +43,6 @@ INSTALLED_APPS = [
     'telegram',
 ]
 
-
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok.io',
     'https://*.ngrok-free.app',
@@ -55,17 +51,17 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Отключаем некоторые middleware для ngrok (только для разработки!)
 COMMON_MIDDLEWARE = [
-        'django_prometheus.middleware.PrometheusBeforeMiddleware',
-        'django.middleware.security.SecurityMiddleware',
-        'django.contrib.sessions.middleware.SessionMiddleware',
-        'django.middleware.common.CommonMiddleware',
-        'django.middleware.csrf.CsrfViewMiddleware',
-        'django.contrib.auth.middleware.AuthenticationMiddleware',
-        'django.contrib.messages.middleware.MessageMiddleware',
-    ]
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+]
 if DEBUG:
     MIDDLEWARE = [
-        'django_prometheus.middleware.PrometheusBeforeMiddleware',]
+        'django_prometheus.middleware.PrometheusBeforeMiddleware', ]
     MIDDLEWARE += COMMON_MIDDLEWARE
     MIDDLEWARE.append('django_prometheus.middleware.PrometheusAfterMiddleware')
 else:
@@ -94,7 +90,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'zoo.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
@@ -104,7 +99,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -124,7 +118,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -136,7 +129,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
@@ -144,8 +136,6 @@ STATIC_URL = 'static/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = 'media/'
-
-
 
 LOGGING = {
     "version": 1,
@@ -188,3 +178,11 @@ LOGGING = {
         },
     },
 }
+
+CACHALOT_TIMEOUT = 60 * 60
+
+CACHALOT_UNCACHABLE_TABLES = (
+    'telegram_usersession',
+    'telegram_feedback',
+    'telegram_potentialguardian',
+)
