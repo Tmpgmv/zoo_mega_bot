@@ -1,5 +1,8 @@
 import json
 import os
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 import requests
 from django.conf import settings
@@ -16,8 +19,8 @@ from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
 
 
-
-class HelpView(TemplateView):
+@method_decorator(staff_member_required, name='dispatch')
+class HelpView(LoginRequiredMixin, TemplateView):
     template_name = "telegram/webhook.html"
 
     def get_context_data(self, **kwargs):
