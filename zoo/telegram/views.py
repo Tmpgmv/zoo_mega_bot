@@ -268,6 +268,16 @@ class TelegramWebhookView(View):
             text = message.get('text', '')
             username = message.get('from', {}).get('username', '')
 
+            # Проверяем, ожидаем ли мы комментарий к отзыву
+            if self.waiting_for_feedback_comment.get(chat_id, False):
+                # Это комментарий к отзыву
+                rating = self.temp_rating.get(chat_id, 5)  # По умолчанию 5, если рейтинг не сохранен
+                self.save_feedback(chat_id, username, rating, text)
+                # Очищаем состояния
+                self.waiting_for_feedback_comment[chat_id] = False
+                self.temp_rating.pop(chat_id, None)
+                return
+
             if text == '/start':
                 self.handle_start(chat_id, username)
             elif text == '/animals':
@@ -277,14 +287,15 @@ class TelegramWebhookView(View):
             elif text == '/feedback':
                 self.show_feedback_menu(chat_id)
             elif text == '/cancel':
+                # Очищаем состояния при отмене
+                self.waiting_for_feedback_comment[chat_id] = False
+                self.temp_rating.pop(chat_id, None)
                 self.bot.send_message(chat_id, "Действие отменено. Возвращаюсь в главное меню.")
                 self.handle_start(chat_id, username)
             else:
-                # Это комментарий. Его надо записать.
-
                 self.bot.send_message(
                     chat_id,
-                    "Спасибо! Можно перейти в главное меню /main_menu ."
+                    "Используй /start для перехода в главное меню."
                 )
         except Exception as e:
             print(f"Error handling message: {e}")
@@ -295,11 +306,11 @@ class TelegramWebhookView(View):
             session = QuizSession(chat_id, username)
             session.reset()
 
-            welcome_text = """🐺 <b>Добро пожаловать в тест "Тотемное животное"!</b>
+            welcome_text = """🐺 <b>Привет! Ты в чате московского зоопарка</b>
 
-Ответь на несколько вопросов, и я расскажу, какое животное является твоим тотемом.
+Хочешь, я расскажу, какое животное является твоим тотемом?
 
-🌿 <b>Готов?</b> Нажми кнопку ниже чтобы начать!"""
+🌿 <b>Готов?</b> Нажми кнопку ниже, чтобы начать!"""
 
             keyboard = {
                 "inline_keyboard": [
@@ -397,6 +408,7 @@ class TelegramWebhookView(View):
                 if rating in ['1', '2', '3', '4', '5']:
                     self.process_feedback_rating(chat_id, int(rating), username)
                 elif rating == "write-comment":
+
                     self.ask_for_feedback_comment(chat_id)
                 elif rating == "skip":
                     rating_value = self.temp_rating.get(chat_id, 5)
@@ -886,12 +898,12 @@ class TelegramWebhookView(View):
             )
 
             # Отправляем подтверждение
-            text = f"""✅ <b>Спасибо за ваш отзыв!</b>
+            text = f"""✅ <b>Спасибо за отзыв!</b>
 
-    Ваша оценка: {rating}⭐
+    Твоя оценка: {rating}⭐
     Комментарий: {comment if comment else "Не оставлен"}
 
-    Спасибо за отзыв. Мы учтем и будем стараться стать лучше!
+    Мы учтем и будем стараться стать лучше!
 
     Хочешь оставить еще один отзыв? Нажми /feedback"""
 
