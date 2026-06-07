@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 
     'solo',
     'cachalot',
+    'django_prometheus',
 
     'telegram',
 ]
@@ -53,9 +54,8 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Отключаем некоторые middleware для ngrok (только для разработки!)
-if DEBUG:
-    # Убираем проблемный middleware
-    MIDDLEWARE = [
+COMMON_MIDDLEWARE = [
+        'django_prometheus.middleware.PrometheusBeforeMiddleware',
         'django.middleware.security.SecurityMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.common.CommonMiddleware',
@@ -63,16 +63,16 @@ if DEBUG:
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
     ]
+if DEBUG:
+    MIDDLEWARE = [
+        'django_prometheus.middleware.PrometheusBeforeMiddleware',]
+    MIDDLEWARE += COMMON_MIDDLEWARE
+    MIDDLEWARE.append('django.contrib.messages.middleware.MessageMiddleware')
 else:
     MIDDLEWARE = [
-        'django.middleware.security.SecurityMiddleware',
-        'django.contrib.sessions.middleware.SessionMiddleware',
-        'django.middleware.common.CommonMiddleware',
-        'django.middleware.csrf.CsrfViewMiddleware',
-        'django.contrib.auth.middleware.AuthenticationMiddleware',
-        'django.contrib.messages.middleware.MessageMiddleware',
-        'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    ]
+        'django_prometheus.middleware.PrometheusBeforeMiddleware', ]
+    MIDDLEWARE += COMMON_MIDDLEWARE
+    MIDDLEWARE.append('django.contrib.messages.middleware.MessageMiddleware')
 
 ROOT_URLCONF = 'zoo.urls'
 
@@ -143,3 +143,47 @@ STATIC_URL = 'static/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = 'media/'
+
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": "django_app.log",
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "telegram": {  # Ваш логгер для телеграм-бота
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}

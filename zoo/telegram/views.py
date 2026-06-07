@@ -630,7 +630,7 @@ class TelegramWebhookView(View):
     {self._get_animal_advice(primary_animal.name)}
     ━━━━━━━━━━━━━━━━━━━━
 
-    💰 <b>Почему бы тебе не взять свой тотем в опеку?</b> 
+    💰 <b>Почему бы тебе не взять свой тотем под опеку?</b> 
     <b>Нажми /guardian</b>
 
 
@@ -689,7 +689,7 @@ class TelegramWebhookView(View):
     • Сильные стороны: {self._get_animal_strengths(animal.name)}
     • Когда появляется: {self._get_animal_when_appears(animal.name)}
 
-    💡 <b>Почему бы тебе не взять его в опеку?:</b> 
+    💡 <b>Почему бы тебе не взять его под опеку?:</b> 
     Нажмите /guardian
 
     """
