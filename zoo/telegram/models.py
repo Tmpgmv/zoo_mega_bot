@@ -7,9 +7,10 @@ from solo.models import SingletonModel
 
 class TelegramSettings(SingletonModel):
     webhook_url = models.URLField()
+    bot_url = models.URLField()
 
     def __str__(self):
-        return "Telegram Configuration"
+        return "Опции"
 
     class Meta:
         verbose_name = "Опции"

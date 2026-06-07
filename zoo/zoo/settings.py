@@ -67,12 +67,13 @@ if DEBUG:
     MIDDLEWARE = [
         'django_prometheus.middleware.PrometheusBeforeMiddleware',]
     MIDDLEWARE += COMMON_MIDDLEWARE
-    MIDDLEWARE.append('django.contrib.messages.middleware.MessageMiddleware')
+    MIDDLEWARE.append('django_prometheus.middleware.PrometheusAfterMiddleware')
 else:
     MIDDLEWARE = [
         'django_prometheus.middleware.PrometheusBeforeMiddleware', ]
     MIDDLEWARE += COMMON_MIDDLEWARE
-    MIDDLEWARE.append('django.contrib.messages.middleware.MessageMiddleware')
+    MIDDLEWARE.append('django.middleware.clickjacking.XFrameOptionsMiddleware')
+    MIDDLEWARE.append('django_prometheus.middleware.PrometheusAfterMiddleware')
 
 ROOT_URLCONF = 'zoo.urls'
 

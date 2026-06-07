@@ -24,6 +24,7 @@ class HelpView(TemplateView):
         context = super().get_context_data(**kwargs)
         context["BOT_TOKEN"] = TELEGRAM_ACCESS_TOKEN
         context["HTTPS_URL"] = TelegramSettings.objects.first().webhook_url if TelegramSettings.objects.first() else ""
+        context["BOT_URL"] = TelegramSettings.objects.first().bot_url
         return context
 
 
