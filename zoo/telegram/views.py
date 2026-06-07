@@ -220,14 +220,14 @@ class TelegramWebhookView(View):
         cache.delete(f'temp_rating_{chat_id}')
 
 
-    def _set_waiting_for_guardian_application(self, username):
-        cache.set(f'guardian_application_{username}', True, timeout=3600)  # 1 час
+    def _set_waiting_for_guardian_application(self, chat_id):
+        cache.set(f'guardian_application_{chat_id}', True, timeout=3600)  # 1 час
 
-    def _get_waiting_for_guardian_application(self, username):
-        return cache.get(f'guardian_application_{username}')
+    def _get_waiting_for_guardian_application(self, chat_id):
+        return cache.get(f'guardian_application_{chat_id}')
 
-    def _clear_waiting_for_guardian_application(self, username):
-        cache.delete(f'guardian_application_{username}')
+    def _clear_waiting_for_guardian_application(self, chat_id):
+        cache.delete(f'guardian_application_{chat_id}')
 
 
     def _get_quiz_rezult(self, username):
@@ -300,6 +300,13 @@ class TelegramWebhookView(View):
                 self.save_feedback(chat_id, username, rating, text)
                 return
 
+            # Проверяем, ожидаем ли мы обращение по поуоду опеки.
+            if self._get_waiting_for_guardian_application(chat_id):
+                # Это обращение по поводу опеки.
+                self.save_guardian_application(chat_id, username, text)
+                return
+
+
             if text == '/start':
                 self.handle_start(chat_id, username)
             elif text == '/animals':
@@ -307,7 +314,7 @@ class TelegramWebhookView(View):
             elif text == '/guardian':
                 self.show_guardian_program(chat_id)
             elif text == '/become_guardian':
-                self.become_guardian(chat_id)
+                self.become_guardian(chat_id, username)
             elif text == '/feedback':
                 self.show_feedback_menu(chat_id)
             elif text == '/cancel':
@@ -423,6 +430,8 @@ class TelegramWebhookView(View):
                 self.show_about_zoo(chat_id)
             elif callback_data == "guardian_program":
                 self.show_guardian_program(chat_id)
+            elif callback_data == "become_guardian":
+                self.become_guardian(chat_id, username)
             elif callback_data == "feedback_menu":
                 self.show_feedback_menu(chat_id)
             elif callback_data.startswith("feedback_"):
@@ -650,7 +659,7 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                "Извините, произошла ошибка при подсчете результатов. Попробуйте /start"
+                "Извини, произошла ошибка при подсчете результатов. Попробуй /start"
             )
 
     def _get_animal_advice(self, animal_name):
@@ -757,7 +766,7 @@ class TelegramWebhookView(View):
 
         keyboard = {
             "inline_keyboard": [
-                [{"text": "📖 Описание и контакты", "callback_data": "show_zoo_description"}],
+                [{"text": "📖 Описание", "callback_data": "show_zoo_description"}],
                 [{"text": "📸 Фото зоопарка", "callback_data": "show_zoo_photos"}],
                 [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
                 [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
@@ -826,7 +835,7 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                "Извините, произошла ошибка при загрузке информации о зоопарке."
+                "Извини, произошла ошибка при загрузке информации о зоопарке."
             )
 
     def show_zoo_photos(self, chat_id):
@@ -873,7 +882,7 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                "Извините, произошла ошибка при загрузке фото."
+                "Извини, произошла ошибка при загрузке фото."
             )
 
     def show_feedback_menu(self, chat_id):
@@ -965,10 +974,11 @@ class TelegramWebhookView(View):
 
         except Exception as e:
             print(f"Error saving feedback: {e}")
-            self.bot.send_message(chat_id, "Извините, произошла ошибка при сохранении отзыва. Попробуйте позже.")
+            self.bot.send_message(chat_id, "Извини, произошла ошибка при сохранении отзыва. Попробуй позже.")
 
     def show_guardian_program(self, chat_id):
         """Показать информацию о программе опеки"""
+        about_zoo = AboutZoo.objects.first()
         try:
             guardian = GuardianProgram.objects.first()
 
@@ -1001,11 +1011,60 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                "Извините, произошла ошибка при загрузке информации о программе опеки."
+                f"Извини, произошла ошибка при загрузке информации о "
+                f"программе опеки. Попробуй позже или звони {about_zoo.get_phone()} "
+                f"пиши нам на email: {about_zoo.email}"
             )
 
-    def become_guardian(self, chat_id):
-        pass
+    def become_guardian(self, chat_id, username):
+        about_zoo = AboutZoo.objects.first()
+
+        """Начать процесс оформления заявки на опеку"""
+        try:
+            # Получаем username из сессии или запрашиваем
+            # Здесь нужно получить username пользователя
+            # Временно используем chat_id как идентификатор
+
+            # Проверяем, не ожидаем ли уже заявку
+            if self._get_waiting_for_guardian_application(chat_id):
+                self.bot.send_message(
+                    chat_id,
+                    "Ты уже отправил заявку на опеку. Пожалуйста, ожидай ответа от наших сотрудников. " +
+                    f"Или звони {about_zoo.get_phone()} пиши нам на email: {about_zoo.email}"
+                )
+                return
+
+            # Устанавливаем флаг ожидания заявки
+            self._set_waiting_for_guardian_application(chat_id)
+
+            text = """🤝 <b>Обращение по поводу опеки</b>
+
+    Мы рады, что ты хочешь стать опекуном животного в нашем зоопарке!
+    Или у тебя просто есть вопросы.
+
+    Пожалуйста, напиши одним сообщением:
+
+    1. Твое имя и контактный телефон (или другой способ связи).
+    2. Какое животное ты хотел бы взять под опеку.
+    3. Твои пожелания или вопросы по программе опеки.
+
+    Пример:
+    "Иван Иванов, тел: +7-999-123-45-67. Хочу взять под опеку волка. Интересно узнать подробнее о программе."
+
+    Напиши всё одним сообщением, и мы свяжемся с тобой в ближайшее время.
+
+    Чтобы отменить, нажми /cancel"""
+
+            self.bot.send_message(chat_id, text)
+
+        except Exception as e:
+            print(f"Error in become_guardian: {e}")
+            import traceback
+            traceback.print_exc()
+            self.bot.send_message(
+                chat_id,
+                f"Извини, произошла ошибка. Попробуй позже. Или звони {about_zoo.get_phone()}, пиши {about_zoo.email.email} ."
+            )
 
 
     def save_guardian_application(self, chat_id, username, message_text):
@@ -1051,11 +1110,7 @@ class TelegramWebhookView(View):
 
             self.bot.send_message(chat_id, confirmation_text)
 
-            # Очищаем состояние ожидания
-            self.waiting_for_guardian_application[chat_id] = False
-
-            # Опционально: отправить уведомление администраторам
-            self.notify_admins_about_application(application)
+            self._clear_waiting_for_guardian_application(chat_id)
 
         except Exception as e:
             print(f"Error saving guardian application: {e}")
@@ -1063,7 +1118,7 @@ class TelegramWebhookView(View):
             traceback.print_exc()
             self.bot.send_message(
                 chat_id,
-                f"Никогда такого не было и вот опять. Произошла ошибка при сохранении заявки. Попробуй позже или напиши нам на email: {about_zoo.email}"
+                f"Никогда такого не было и вот опять. Произошла ошибка при сохранении заявки. Попробуй позже или звони {about_zoo.get_phone()} пиши нам на email: {about_zoo.email}"
             )
 
 
