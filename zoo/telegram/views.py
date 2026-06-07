@@ -1,6 +1,6 @@
 import json
 import os
-
+from django.core.cache import cache
 import requests
 from django.conf import settings
 from django.http import JsonResponse
@@ -13,6 +13,8 @@ from telegram.models import Animal, Answer, Question, TelegramSettings, UserSess
     Feedback
 
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
+
+
 
 
 class HelpView(TemplateView):
@@ -208,10 +210,14 @@ class QuizSession:
 class TelegramWebhookView(View):
     """Основной webhook для обработки сообщений"""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.waiting_for_feedback_comment = {}
-        self.temp_rating = {}
+    def _get_temp_rating(self, chat_id):
+        return cache.get(f'temp_rating_{chat_id}')
+
+    def _set_temp_rating(self, chat_id, rating):
+        cache.set(f'temp_rating_{chat_id}', rating, timeout=3600)  # 1 час
+
+    def _clear_temp_rating(self, chat_id):
+        cache.delete(f'temp_rating_{chat_id}')
 
     bot = TelegramBot()
 
@@ -261,10 +267,6 @@ class TelegramWebhookView(View):
 
         self.bot.send_message(chat_id, text, keyboard)
 
-    def _clear_waiting_for_feedback(self, chat_id):
-        # Очищаем состояния ожидания
-        self.waiting_for_feedback_comment[chat_id] = False
-        self.temp_rating.pop(chat_id, None)
 
     def handle_message(self, message):
         """Обработка текстовых сообщений"""
@@ -274,9 +276,9 @@ class TelegramWebhookView(View):
             username = message.get('from', {}).get('username', '')
 
             # Проверяем, ожидаем ли мы комментарий к отзыву
-            if self.waiting_for_feedback_comment.get(chat_id, False):
+            if self._get_temp_rating(chat_id):
                 # Это комментарий к отзыву
-                rating = self.temp_rating.get(chat_id, 5)  # По умолчанию 5, если рейтинг не сохранен
+                rating = self._get_temp_rating(chat_id)
                 self.save_feedback(chat_id, username, rating, text)
                 return
 
@@ -404,14 +406,14 @@ class TelegramWebhookView(View):
             elif callback_data == "feedback_menu":
                 self.show_feedback_menu(chat_id)
             elif callback_data.startswith("feedback_"):
-                rating = callback_data.split('_')[1]
-                if rating in ['1', '2', '3', '4', '5']:
-                    self.process_feedback_rating(chat_id, int(rating), username)
-                elif rating == "write-comment":
+                user_input = callback_data.split('_')[1]
+                if user_input in ['1', '2', '3', '4', '5']:
+                    self.process_feedback_rating(chat_id, int(user_input), username)
+                elif user_input == "write-comment":
 
                     self.ask_for_feedback_comment(chat_id)
-                elif rating == "skip":
-                    rating_value = self.temp_rating.get(chat_id, 5)
+                elif user_input == "skip":
+                    rating_value = self._get_temp_rating(chat_id)
                     self.save_feedback(chat_id, username, rating_value, "")
             elif callback_data == "show_zoo_description":
                 self.show_zoo_description(chat_id)
@@ -852,7 +854,7 @@ class TelegramWebhookView(View):
         """Обработка оценки отзыва"""
         try:
             # Сохраняем временную оценку
-            self.temp_rating[chat_id] = rating
+            self._set_temp_rating(chat_id, rating)
 
             text = f"""💬 <b>Спасибо за оценку {rating}⭐!</b>
 
@@ -884,8 +886,7 @@ class TelegramWebhookView(View):
     Чтобы отменить, нажми /cancel"""
 
         self.bot.send_message(chat_id, text)
-        # Устанавливаем состояние ожидания комментария
-        self.waiting_for_feedback_comment[chat_id] = True
+
 
     def save_feedback(self, chat_id, username, rating, comment=""):
         """Сохранить отзыв в базу данных"""
@@ -915,7 +916,7 @@ class TelegramWebhookView(View):
             }
 
             self.bot.send_message(chat_id, text, keyboard)
-            self._clear_waiting_for_feedback(chat_id)
+            self._clear_temp_rating(chat_id)
 
         except Exception as e:
             print(f"Error saving feedback: {e}")
