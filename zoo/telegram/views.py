@@ -296,6 +296,8 @@ class TelegramWebhookView(View):
                 self.handle_animals(chat_id)
             elif text == '/guardian':
                 self.show_guardian_program(chat_id)
+            elif text == '/become_guardian':
+                self.gecome_guardian(chat_id)            
             elif text == '/feedback':
                 self.show_feedback_menu(chat_id)
             elif text == '/cancel':
@@ -969,11 +971,7 @@ class TelegramWebhookView(View):
 
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": "🌿 Узнать свое тотемное животное", "callback_data": "start_quiz"}],
-                    [{"text": "🐾 Все животные", "callback_data": "show_animals"}],
-                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
-                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
-                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
+                    [{"text": "🐘 Обратиться в зоопарк по поводу опеки", "callback_data": "become_guardian"}],
                     [{"text": "🔙 В главное меню", "callback_data": "main_menu"}]
                 ]
             }
@@ -995,6 +993,9 @@ class TelegramWebhookView(View):
                 chat_id,
                 "Извините, произошла ошибка при загрузке информации о программе опеки."
             )
+
+    def gecome_guardian(self, chat_id):
+        pass
 
 
 @method_decorator(csrf_exempt, name='dispatch')
