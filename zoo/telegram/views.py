@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 
 from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo, GuardianProgram, \
-    Feedback
+    Feedback, PotentialGuardian
 
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
@@ -220,6 +220,16 @@ class TelegramWebhookView(View):
         cache.delete(f'temp_rating_{chat_id}')
 
 
+    def _set_waiting_for_guardian_application(self, username):
+        cache.set(f'guardian_application_{username}', True, timeout=3600)  # 1 час
+
+    def _get_waiting_for_guardian_application(self, username):
+        return cache.get(f'guardian_application_{username}')
+
+    def _clear_waiting_for_guardian_application(self, username):
+        cache.delete(f'guardian_application_{username}')
+
+
     def _get_quiz_rezult(self, username):
         return cache.get(f'temp_quiz_rezult_{username}')
 
@@ -297,7 +307,7 @@ class TelegramWebhookView(View):
             elif text == '/guardian':
                 self.show_guardian_program(chat_id)
             elif text == '/become_guardian':
-                self.gecome_guardian(chat_id)            
+                self.become_guardian(chat_id)
             elif text == '/feedback':
                 self.show_feedback_menu(chat_id)
             elif text == '/cancel':
@@ -994,8 +1004,66 @@ class TelegramWebhookView(View):
                 "Извините, произошла ошибка при загрузке информации о программе опеки."
             )
 
-    def gecome_guardian(self, chat_id):
+    def become_guardian(self, chat_id):
         pass
+
+
+def save_guardian_application(self, chat_id, username, message_text):
+    about_zoo = AboutZoo.objects.first()
+    """Сохранить заявку на опеку"""
+    try:
+        # Получаем результаты викторины из кеша
+        quiz_result = self._get_quiz_rezult(username) or {}
+
+        # Форматируем результат викторины для сохранения
+        quiz_result_text = ""
+        if quiz_result:
+            quiz_result_text = f"""
+Топ-3 тотемных животных:
+1. {quiz_result.get('primary', 'Не определено')} ({quiz_result.get('primary_points', 0)} очков)
+2. {quiz_result.get('secondary', 'Не определено')} ({quiz_result.get('secondary_points', 0)} очков)
+3. {quiz_result.get('tertiary', 'Не определено')} ({quiz_result.get('tertiary_points', 0)} очков)
+"""
+
+        # Создаем запись в базе данных
+        application = PotentialGuardian.objects.create(
+            username=username,
+            quiz_result=quiz_result_text,
+            message=message_text,
+            flag=False,
+            handled=False
+        )
+
+        # Отправляем подтверждение пользователю
+        confirmation_text = f"""✅ <b>Ты молодец!</b>
+
+Спасибо за интерес к программе опеки!
+
+Наши сотрудники свяжутся с тобой в ближайшее время
+через Telegram или удобным для тебя способом (если Вы оставили контакты в сообщении).
+
+Если у есть дополнительные вопросы, пиши на email: {about_zoo.email}
+
+Или звони: {about_zoo.get_phone()}
+
+Вернуться в главное меню: /start"""
+
+        self.bot.send_message(chat_id, confirmation_text)
+
+        # Очищаем состояние ожидания
+        self.waiting_for_guardian_application[chat_id] = False
+
+        # Опционально: отправить уведомление администраторам
+        self.notify_admins_about_application(application)
+
+    except Exception as e:
+        print(f"Error saving guardian application: {e}")
+        import traceback
+        traceback.print_exc()
+        self.bot.send_message(
+            chat_id,
+            "Извините, произошла ошибка при сохранении заявки. Попробуйте позже или напишите нам на email: info@zoo.ru"
+        )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
