@@ -7,14 +7,17 @@ class ShareUtils:
     """Утилиты для создания ссылок на шеринг в соцсети"""
 
     @staticmethod
-    def generate_share_urls(text):
+    def generate_share_urls(totem):
         """
         Генерирует ссылки для шаринга в соцсетях
         """
-        encoded_text = urllib.parse.quote(text)
+
+
+
 
         telegram_settings = TelegramSettings.objects.first()
-
+        text = f"✨ Я прошел викторину и узнал, что мой тотем — {totem}! \n\n🎯 Узнай свой тотем: {telegram_settings.bot_url}"
+        encoded_text = urllib.parse.quote(text)
         encoded_bot_link = urllib.parse.quote(telegram_settings.bot_url)
 
         share_urls = {

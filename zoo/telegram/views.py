@@ -14,6 +14,7 @@ from django.views.generic import TemplateView
 
 from telegram.models import Animal, Answer, Question, TelegramSettings, UserSession, Photo, AboutZoo, GuardianProgram, \
     Feedback, PotentialGuardian
+from telegram.utils import ShareUtils
 
 from zoo.secret import TELEGRAM_ACCESS_TOKEN
 
@@ -211,7 +212,7 @@ class QuizSession:
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class TelegramWebhookView(View):
+class TelegramWebhookView(LoginRequiredMixin, View):
     """Основной webhook для обработки сообщений"""
 
     def _get_temp_rating(self, chat_id):
@@ -558,6 +559,7 @@ class TelegramWebhookView(View):
         }
         return result
 
+
     def send_result(self, session, chat_id):
         """Отправка результата теста с фото животного и топ-3 тотемов"""
         try:
@@ -637,25 +639,54 @@ class TelegramWebhookView(View):
     💰 <b>Почему бы тебе не взять свой тотем под опеку?</b> 
     <b>Нажми /guardian</b>
 
+    💫 <b>Поделись результатом с друзьями!</b>
+    """
 
-"""
+            # Создаем текст для шаринга
+            bot_link = "https://t.me/ВАШ_ЮЗЕРНЕЙМ_БОТА"  # Замените на реальный
+
+
+            # Генерируем ссылки для шаринга
+            share_urls = ShareUtils.generate_share_urls(primary_animal_name)
+
+            # Создаем клавиатуру с кнопками шаринга
+            share_buttons = []
+            if share_urls.get('telegram'):
+                share_buttons.append({"text": "📱 Telegram", "url": share_urls['telegram']})
+            if share_urls.get('vk'):
+                share_buttons.append({"text": "📘 ВКонтакте", "url": share_urls['vk']})
+            if share_urls.get('ok'):
+                share_buttons.append({"text": "🔴 Одноклассники", "url": share_urls['ok']})
+
+            keyboard = {
+                "inline_keyboard": [
+                    share_buttons,  # Кнопки соцсетей в одном ряду
+                    [{"text": "🔄 Пройти викторину ещё раз", "callback_data": "restart_quiz"}],
+                    [{"text": "🐾 Посмотреть всех животных", "callback_data": "show_animals"}],
+                    [{"text": "🏛️ О зоопарке", "callback_data": "about_zoo"}],
+                    [{"text": "🤝 Программа опеки", "callback_data": "guardian_program"}],
+                    [{"text": "💬 Оставить отзыв", "callback_data": "feedback_menu"}],
+                    [{"text": "🔙 В главное меню", "callback_data": "main_menu"}],
+                ]
+            }
+
+            # Если нет кнопок шаринга, убираем пустой ряд
+            if not share_buttons:
+                keyboard["inline_keyboard"].pop(0)
 
             # Отправляем результат с фото животного
             if primary_animal.photo and primary_animal.photo.name:
                 photo_path = os.path.join(settings.MEDIA_ROOT, primary_animal.photo.name)
                 print(f"Sending animal photo from: {photo_path}")
                 if os.path.exists(photo_path):
-                    self.bot.send_photo(chat_id, photo_path, result_text)
+                    self.bot.send_photo(chat_id, photo_path, result_text, keyboard)
                 else:
                     print(f"Animal photo not found: {photo_path}")
-                    self.bot.send_message(chat_id, result_text)
+                    self.bot.send_message(chat_id, result_text, keyboard)
             else:
-                self.bot.send_message(chat_id, result_text)
+                self.bot.send_message(chat_id, result_text, keyboard)
 
             session.complete()
-
-            # После отправки результата, показываем предложение перезапустить викторину
-            self.show_restart_prompt(chat_id)
 
         except Exception as e:
             print(f"Error in send_result: {e}")
@@ -1125,9 +1156,9 @@ class TelegramWebhookView(View):
                 f"Никогда такого не было и вот опять. Произошла ошибка при сохранении заявки. Попробуй позже или звони {about_zoo.get_phone()} пиши нам на email: {about_zoo.email}"
             )
 
-
+@method_decorator(staff_member_required, name='dispatch')
 @method_decorator(csrf_exempt, name='dispatch')
-class WebhookInfoView(View):
+class WebhookInfoView(LoginRequiredMixin, View):
     """View для получения информации о webhook"""
 
     def get(self, request):
@@ -1137,8 +1168,8 @@ class WebhookInfoView(View):
         response = requests.get(url)
         return JsonResponse(response.json())
 
-
-class PhotoView(TemplateView):
+@method_decorator(staff_member_required, name='dispatch')
+class PhotoView(LoginRequiredMixin, TemplateView):
     template_name = "telegram/photo.html"
 
     def get_context_data(self, **kwargs):
